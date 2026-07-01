@@ -1,0 +1,30 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="clubRing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFB300"/>
+      <stop offset="50%" stop-color="#FFD54A"/>
+      <stop offset="100%" stop-color="#FFF176"/>
+    </linearGradient>
+    <linearGradient id="clubM" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF176"/>
+      <stop offset="100%" stop-color="#FFB300"/>
+    </linearGradient>
+    <filter id="clubGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <circle cx="64" cy="64" r="62" fill="#0F1117"/>
+  <circle cx="64" cy="64" r="58" fill="none" stroke="url(#clubRing)" stroke-width="1.5" opacity="0.55"/>
+  <circle cx="64" cy="64" r="50" fill="none" stroke="url(#clubRing)" stroke-width="1" stroke-dasharray="2 4" opacity="0.35"/>
+
+  <circle cx="64" cy="64" r="40" fill="rgba(255,213,74,0.06)" stroke="rgba(255,213,74,0.35)" stroke-width="1"/>
+
+  <path d="M40 84 L40 42 L64 68 L88 42 L88 84"
+        fill="none" stroke="url(#clubM)" stroke-width="9"
+        stroke-linecap="round" stroke-linejoin="round" filter="url(#clubGlow)"/>
+</svg>

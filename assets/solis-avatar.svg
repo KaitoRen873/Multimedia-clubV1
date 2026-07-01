@@ -1,0 +1,43 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="solisBg" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#FFF9E0"/>
+      <stop offset="35%" stop-color="#FFD54A"/>
+      <stop offset="70%" stop-color="#FFB300"/>
+      <stop offset="100%" stop-color="#B8860B"/>
+    </radialGradient>
+    <radialGradient id="solisCore" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="45%" stop-color="#FFF176"/>
+      <stop offset="100%" stop-color="#FFD54A" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="solisRing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF176"/>
+      <stop offset="100%" stop-color="#FFB300"/>
+    </linearGradient>
+    <filter id="solisGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- outer dark backdrop so the orb reads well on any surface -->
+  <circle cx="64" cy="64" r="62" fill="#0F1117"/>
+  <circle cx="64" cy="64" r="60" fill="none" stroke="url(#solisRing)" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- main orb -->
+  <circle cx="64" cy="64" r="46" fill="url(#solisBg)" filter="url(#solisGlow)"/>
+
+  <!-- inner spark / consciousness motif -->
+  <g filter="url(#solisGlow)">
+    <circle cx="58" cy="52" r="20" fill="url(#solisCore)"/>
+    <path d="M64 40 L69 58 L87 64 L69 70 L64 88 L59 70 L41 64 L59 58 Z"
+          fill="#FFFDF5" opacity="0.9"/>
+  </g>
+
+  <!-- thin orbiting ring for a "scanning" AI feel -->
+  <ellipse cx="64" cy="64" rx="52" ry="18" fill="none" stroke="#FFF176" stroke-width="1" opacity="0.35" transform="rotate(-18 64 64)"/>
+</svg>
