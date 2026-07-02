@@ -23,7 +23,14 @@
 // their app access via RLS; it just leaves the underlying Supabase Auth
 // login in place until removed here or from the dashboard.)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+declare const Deno: {
+  env: {
+    get(name: string): string | undefined;
+  };
+  serve(handler: (req: Request) => Promise<Response> | Response): void;
+};
+
+import { createClient } from "https://esm.sh/npm:@supabase/supabase-js@2?target=deno&dts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
