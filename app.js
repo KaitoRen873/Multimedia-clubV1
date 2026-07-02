@@ -740,10 +740,21 @@ async function resetUserPassword(id, email){
   if(error) alert(error.message);
 }
 async function deleteUser(id){
-  if(!confirm('Delete this member\'s profile data? This cannot be undone from the browser.')) return;
-  const { error } = await sb.from('profiles').delete().eq('id', id);
-  if(error){ alert(error.message); return; }
-  writeAudit('delete_profile', id, 'Profile data deleted (see README about full account deletion)');
+  if(!confirm('Permanently delete this member? This removes their login and all profile data and cannot be undone.')) return;
+
+  // Try the edge function first — it deletes the actual Supabase Auth
+  // login (profile data cascades automatically). If it isn't deployed
+  // yet, fall back to removing just the profile row so the admin panel
+  // still works without it (see supabase/functions/delete-user).
+  const { data, error } = await sb.functions.invoke('delete-user', { body: { user_id: id } });
+  if(!error && data?.success){
+    writeAudit('delete_user', id, 'Account fully deleted (auth + profile)');
+    return;
+  }
+
+  const { error: profileError } = await sb.from('profiles').delete().eq('id', id);
+  if(profileError){ alert(profileError.message); return; }
+  writeAudit('delete_profile', id, 'Profile data deleted — auth login remains until the delete-user edge function is deployed (see README)');
 }
 
 /* ============================================================
