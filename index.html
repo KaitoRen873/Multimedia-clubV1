@@ -490,10 +490,6 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
 .section-badge{ display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; font-size:11.5px; color:var(--text-1); }
 .divider{ height:1px; background:var(--panel-border); margin:20px 0; }
 .empty-state{ text-align:center; padding:40px 20px; color:var(--text-2); font-size:13.5px; }
-.demo-banner{
-  position:fixed; top:0; left:0; right:0; z-index:600; text-align:center; font-size:12px; padding:7px;
-  background:linear-gradient(90deg,var(--violet),var(--cyan)); color:#151208; font-family:var(--font-mono); font-weight:600;
-}
 
 /* ============ INTRO LOADER ============ */
 #loader{
@@ -669,8 +665,6 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
   </div>
 </div>
 
-<div class="demo-banner">Prototype build — data is simulated in-memory (no live backend connected). See notes at page bottom.</div>
-
 <!-- NAV -->
 <nav class="nav glass" style="margin-top:34px;">
   <a href="#home" class="brand"><span class="brand-mark"><img src="assets/club-logo.svg" alt="Multimedia Club logo" /></span> Multimedia</a>
@@ -702,7 +696,7 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
   <div class="container">
     <div class="hero-grid">
       <div>
-        <div class="eyebrow reveal">Live at Northfield Academy</div>
+        <div class="eyebrow reveal">Live club updates</div>
         <h1 class="reveal">Everything school,<br>in <span class="grad">one signal.</span></h1>
         <p class="reveal">Announcements, events, and news — organized, searchable, and explained by Solis, your AI guide. Members and club officers have their own private portal.</p>
         <div class="hero-actions reveal">
@@ -927,7 +921,7 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
     </div>
     <div class="footer-bottom">
       <span>© 2026 Multimedia Club</span>
-      <span>Prototype build · frontend only</span>
+      <span>Built for members, by members</span>
     </div>
   </div>
 </footer>
@@ -947,7 +941,7 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
     <form id="loginForm" onsubmit="handleLogin(event)">
       <div class="field">
         <label>Email</label>
-        <input type="email" id="loginEmail" required placeholder="you@school.edu" autocomplete="username" />
+        <input type="email" id="loginEmail" required placeholder="you@example.com" autocomplete="username" />
       </div>
       <div class="field">
         <label>Password</label>
@@ -957,7 +951,6 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
         <a href="#" style="font-size:12.5px;color:var(--cyan);" onclick="forgotPassword();return false;">Forgot password?</a>
       </div>
       <button type="submit" class="btn primary" style="width:100%;" id="loginSubmitBtn">Log in</button>
-      <p style="font-size:11.5px;color:var(--text-2);margin-top:14px;text-align:center;">Demo member: mika.c@school.edu / demo1234</p>
     </form>
 
     <form id="registerForm" class="hidden" onsubmit="handleRegister(event)">
@@ -967,14 +960,14 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
       </div>
       <div class="field">
         <label>Email</label>
-        <input type="email" id="regEmail" required placeholder="you@school.edu" autocomplete="username" />
+        <input type="email" id="regEmail" required placeholder="you@example.com" autocomplete="username" />
       </div>
       <div class="field">
         <label>Password</label>
         <input type="password" id="regPassword" required minlength="8" placeholder="At least 8 characters" autocomplete="new-password" />
       </div>
       <button type="submit" class="btn primary" style="width:100%;">Create member account</button>
-      <p style="font-size:11.5px;color:var(--text-2);margin-top:14px;text-align:center;">New accounts join as <b>Member</b>. Club roles and officer positions are assigned by an administrator. We'll simulate a verification email — check the notification bell after signing up.</p>
+      <p style="font-size:11.5px;color:var(--text-2);margin-top:14px;text-align:center;">New accounts join as <b>Member</b>. Club roles and officer positions are assigned by an administrator. Check your inbox for a confirmation email after signing up.</p>
     </form>
   </div>
 </div>
@@ -988,14 +981,14 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
     <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
       <div class="field">
         <label>Administrator email</label>
-        <input type="email" id="adminLoginEmail" required placeholder="admin@school.edu" autocomplete="username" />
+        <input type="email" id="adminLoginEmail" required placeholder="you@example.com" autocomplete="username" />
       </div>
       <div class="field">
         <label>Password</label>
         <input type="password" id="adminLoginPassword" required placeholder="••••••••" autocomplete="current-password" />
       </div>
       <button type="submit" class="btn primary" style="width:100%;background:linear-gradient(120deg,var(--rose),var(--violet));border:none;" id="adminLoginSubmitBtn">Authenticate</button>
-      <p style="font-size:11.5px;color:var(--text-2);margin-top:14px;text-align:center;">This sequence only opens the login form — valid administrator credentials are still required. Demo admin: admin@school.edu / demo1234</p>
+      <p style="font-size:11.5px;color:var(--text-2);margin-top:14px;text-align:center;">This sequence only opens the login form — valid administrator credentials are still required.</p>
     </form>
   </div>
 </div>

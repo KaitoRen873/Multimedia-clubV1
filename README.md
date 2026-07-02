@@ -5,7 +5,7 @@ Auth, a real Postgres database with row-level security, and live
 updates via Supabase Realtime. No mock data, no in-memory arrays that
 reset on refresh.
 
-## What changed from the prototype
+## What this includes
 
 - **Auth is real.** Sign-up/sign-in go through Supabase Auth. Passwords
   are hashed and managed by Supabase, not by this code.
@@ -49,7 +49,7 @@ reset on refresh.
    through Solis — the 2-seat cap is enforced by the database either
    way.
 
-## Hidden access (unchanged from the prototype)
+## Hidden access
 
 - `↑ ↑ ↑ ↓ → →` — opens the Member Portal (login/join)
 - `↓ ↓ ← ← ↑` — opens the Administrator login
@@ -89,14 +89,13 @@ A few things worth knowing before you treat this as fully finished:
   need an open insert policy usable by anyone, which is its own abuse
   surface. Client-side lockout after repeated failures is still in
   place as a UX layer; Supabase Auth also rate-limits at the API level.
-- **Notifications are still local/ephemeral** (per browser tab), not
-  backed by a table. Everything else (announcements, events, news,
-  members, logins, audit log) is real and persistent.
-- **"Website visits" reporting is minimal.** There's a real
-  `page_views` table recording one row per page load, but the admin
-  dashboard doesn't chart it yet — query it directly in SQL Editor for
-  now (`select count(*) from page_views where viewed_at > now() -
-  interval '1 day'`), or extend `renderAdminStats()` in `js/app.js`.
+- **Notifications are real but per-tab.** The bell fires from actual
+  Realtime events (new announcements, new events, event reminders
+  inside 24 hours, your own login, and role/officer changes made to
+  your account) — they're just not stored in a table, so a fresh tab
+  starts with an empty notification list rather than history. Everything
+  else (announcements, events, news, members, logins, audit log, page
+  views) is fully persisted in Postgres.
 
 ## File map
 

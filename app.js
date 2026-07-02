@@ -281,6 +281,7 @@ function setupKonamiListener(){
    ============================================================ */
 function loginAs(user){
   state.currentUser = user;
+  pushNotification(`<b>Signed in</b> as ${escapeHtml(user.name)} · ${detectDevice()}`);
   document.getElementById('userMenuWrap').classList.remove('hidden');
   document.getElementById('userMenuWrap').style.display='flex';
   document.getElementById('userGreeting').textContent = user.name + ' · ' + accountLabel(user);
@@ -366,18 +367,63 @@ async function fetchAuditLog(){
 }
 
 function setupRealtimeSubscriptions(){
-  sb.channel('public:announcements').on('postgres_changes', {event:'*', schema:'public', table:'announcements'}, fetchAnnouncements).subscribe();
-  sb.channel('public:events').on('postgres_changes', {event:'*', schema:'public', table:'events'}, fetchEvents).subscribe();
-  sb.channel('public:news').on('postgres_changes', {event:'*', schema:'public', table:'news'}, fetchNews).subscribe();
+  sb.channel('public:announcements')
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'announcements'}, (payload)=>{
+      pushNotification(`<b>New announcement:</b> ${escapeHtml(payload.new.title)}`);
+      fetchAnnouncements();
+    })
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'announcements'}, fetchAnnouncements)
+    .on('postgres_changes', {event:'DELETE', schema:'public', table:'announcements'}, fetchAnnouncements)
+    .subscribe();
+
+  sb.channel('public:events')
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'events'}, (payload)=>{
+      pushNotification(`<b>New event:</b> ${escapeHtml(payload.new.title)} — ${formatDate(payload.new.event_date)}`);
+      fetchEvents();
+    })
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'events'}, fetchEvents)
+    .on('postgres_changes', {event:'DELETE', schema:'public', table:'events'}, fetchEvents)
+    .subscribe();
+
+  sb.channel('public:news')
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'news'}, (payload)=>{
+      pushNotification(`<b>New story:</b> ${escapeHtml(payload.new.title)}`);
+      fetchNews();
+    })
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'news'}, fetchNews)
+    .on('postgres_changes', {event:'DELETE', schema:'public', table:'news'}, fetchNews)
+    .subscribe();
+
   sb.channel('public:profiles').on('postgres_changes', {event:'*', schema:'public', table:'profiles'}, async (payload)=>{
     await fetchProfiles();
     if(state.currentUser && payload.new && payload.new.id===state.currentUser.id){
       if(payload.new.suspended){ await sb.auth.signOut(); return; }
+      const roleChanged = payload.old && (
+        payload.old.account_type !== payload.new.account_type ||
+        payload.old.club_role !== payload.new.club_role ||
+        payload.old.officer !== payload.new.officer
+      );
       state.currentUser = payload.new;
       document.getElementById('userGreeting').textContent = payload.new.name + ' · ' + accountLabel(payload.new);
       renderDashboardProfile();
+      if(roleChanged) pushNotification(`<b>Your account was updated:</b> you're now ${accountLabel(payload.new)}.`);
     }
   }).subscribe();
+
+  checkUpcomingEventReminders();
+  setInterval(checkUpcomingEventReminders, 5*60*1000);
+}
+
+const remindedEventIds = new Set();
+function checkUpcomingEventReminders(){
+  const now = new Date();
+  cache.events.forEach(ev=>{
+    const diffHrs = (new Date(ev.event_date) - now) / 3600000;
+    if(diffHrs > 0 && diffHrs <= 24 && !remindedEventIds.has(ev.id)){
+      remindedEventIds.add(ev.id);
+      pushNotification(`<b>Event reminder:</b> ${escapeHtml(ev.title)} is coming up within 24 hours.`);
+    }
+  });
 }
 
 function setupPresence(){
@@ -703,7 +749,7 @@ async function deleteUser(id){
 /* ============================================================
    ADMIN — live stats, login monitoring, audit log
    ============================================================ */
-function renderAdminStats(){
+async function renderAdminStats(){
   if(document.getElementById('admin').classList.contains('hidden')) return;
   const online = presenceOnlineIds();
   const onlineMembers = cache.profiles.filter(u=>!u.suspended && online.has(u.id)).length;
@@ -725,15 +771,27 @@ function renderAdminStats(){
     {n: presenceCount(), l:'Live active users', live:true},
   ].map(s=>`<div class="stat glass"><div class="n ${s.live?'live':''}">${s.live?'<span class="pulse-dot"></span>':''}${s.n}</div><div class="l">${s.l}</div></div>`).join('');
 
-  document.getElementById('adminStats2').innerHTML = [
+  const { visitsToday, visitsTotal } = await fetchPageViewStats();
+  const stats2 = document.getElementById('adminStats2');
+  stats2.style.gridTemplateColumns = 'repeat(5,1fr)';
+  stats2.innerHTML = [
     {n: newToday, l:'New registrations today'},
     {n: newWeek, l:'Registrations this week'},
     {n: newMonth, l:'Registrations this month'},
-    {n: '—', l:'Website visits (see audit/SQL)'},
+    {n: visitsToday, l:'Website visits today'},
+    {n: visitsTotal, l:'Total website visits'},
   ].map(s=>`<div class="stat glass"><div class="n">${s.n}</div><div class="l">${s.l}</div></div>`).join('');
 
   fetchLoginMonitor();
   fetchAuditLog();
+}
+async function fetchPageViewStats(){
+  const startToday = new Date(); startToday.setHours(0,0,0,0);
+  const [{count:visitsToday}, {count:visitsTotal}] = await Promise.all([
+    sb.from('page_views').select('*', {count:'exact', head:true}).gte('viewed_at', startToday.toISOString()),
+    sb.from('page_views').select('*', {count:'exact', head:true}),
+  ]);
+  return { visitsToday: visitsToday ?? 0, visitsTotal: visitsTotal ?? 0 };
 }
 
 function renderLoginMonitor(){
