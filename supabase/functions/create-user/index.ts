@@ -3,7 +3,8 @@
 // Deleting someone's login (not just their profile row) requires
 // the service_role key, which must NEVER be shipped to a browser.
 // This function runs on Supabase's servers, holds that key safely,
-// and only allows an already-authenticated administrator to call it.
+// and only allows an already-authenticated, non-suspended
+// administrator to call it.
 //
 // Deploy with the Supabase CLI:
 //   supabase functions deploy delete-user
@@ -13,58 +14,102 @@
 //     body: { user_id: targetUserId }
 //   });
 //
-// (This is optional for v1 — without it, the admin dashboard's
+// Deleting the auth.users row cascades to public.profiles automatically
+// (see the "on delete cascade" foreign key in schema.sql), so this one
+// call cleans up both — no separate profile delete needed.
+//
+// (This function is optional for v1 — without it, the admin dashboard's
 // "Delete" button still removes the member's profile data and blocks
-// their app access via RLS, it just leaves the underlying login
-// credentials in Supabase Auth until removed from the dashboard or
-// this function is deployed.)
+// their app access via RLS; it just leaves the underlying Supabase Auth
+// login in place until removed here or from the dashboard.)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req) => {
+  // Browsers send a CORS preflight before the real POST — handle it first.
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: CORS_HEADERS });
+  }
+  if (req.method !== "POST") {
+    return json({ error: "Use POST" }, 405);
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+    return json({ error: "Server misconfigured: missing Supabase environment variables" }, 500);
+  }
+
   try {
+    // ---- 1. Identify the caller from their own JWT ----
     const authHeader = req.headers.get("Authorization") ?? "";
-    const jwt = authHeader.replace("Bearer ", "");
+    const jwt = authHeader.replace(/^Bearer\s+/i, "");
+    if (!jwt) {
+      return json({ error: "Missing Authorization header" }, 401);
+    }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-
-    // Verify the caller's JWT and confirm they are an administrator,
-    // using the ANON key + their own token (respects RLS).
     const callerClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: `Bearer ${jwt}` } },
     });
     const { data: { user }, error: authError } = await callerClient.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Not authenticated" }), { status: 401 });
+      return json({ error: "Not authenticated" }, 401);
     }
-    const { data: callerProfile } = await callerClient
+
+    // ---- 2. Confirm the caller is an active administrator ----
+    // (This re-checks server-side; RLS also protects the underlying
+    // table, but we want a clean, explicit error message here.)
+    const { data: callerProfile, error: profileError } = await callerClient
       .from("profiles")
-      .select("account_type")
+      .select("account_type, suspended")
       .eq("id", user.id)
       .single();
-    if (!callerProfile || callerProfile.account_type !== "administrator") {
-      return new Response(JSON.stringify({ error: "Administrator access required" }), { status: 403 });
+    if (profileError || !callerProfile || callerProfile.account_type !== "administrator" || callerProfile.suspended) {
+      return json({ error: "Administrator access required" }, 403);
     }
 
-    const { user_id } = await req.json();
-    if (!user_id) {
-      return new Response(JSON.stringify({ error: "user_id is required" }), { status: 400 });
+    // ---- 3. Parse and validate the target ----
+    let body: { user_id?: string };
+    try {
+      body = await req.json();
+    } catch {
+      return json({ error: "Request body must be valid JSON with a user_id field" }, 400);
+    }
+    const targetId = body.user_id;
+    if (!targetId || typeof targetId !== "string") {
+      return json({ error: "user_id is required" }, 400);
+    }
+    if (targetId === user.id) {
+      return json({ error: "You can't delete your own account through this tool" }, 400);
     }
 
-    // Now use the service_role key — only reachable from here, never
-    // from the browser — to actually delete the auth account.
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const { error: deleteError } = await adminClient.auth.admin.deleteUser(user_id);
-    if (deleteError) {
-      return new Response(JSON.stringify({ error: deleteError.message }), { status: 500 });
-    }
-
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { "Content-Type": "application/json" },
+    // ---- 4. Perform the privileged deletion with the service_role key ----
+    // This key is only ever read here, on Supabase's servers — never
+    // shipped to the browser.
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
+    const { error: deleteError } = await adminClient.auth.admin.deleteUser(targetId);
+    if (deleteError) {
+      return json({ error: deleteError.message }, 500);
+    }
+
+    return json({ success: true, deleted_user_id: targetId });
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+    return json({ error: e instanceof Error ? e.message : "Unexpected server error" }, 500);
   }
 });
