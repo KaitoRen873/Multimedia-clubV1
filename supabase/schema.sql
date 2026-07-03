@@ -95,7 +95,11 @@ security definer
 set search_path = public
 as $$
 begin
-  if not public.is_admin() then
+  -- auth.uid() is NULL when there's no authenticated API session — e.g.
+  -- running directly in the SQL Editor, or via the service_role key.
+  -- Only enforce this check for genuine member/administrator API calls,
+  -- so the project owner can always bootstrap the first admin from SQL.
+  if auth.uid() is not null and not public.is_admin() then
     if new.account_type is distinct from old.account_type
        or new.club_role   is distinct from old.club_role
        or new.officer     is distinct from old.officer
