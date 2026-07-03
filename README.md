@@ -22,6 +22,14 @@ reset on refresh.
 
 ## Setup (about 10 minutes)
 
+**Keep the whole folder together.** `index.html` on its own will not
+work — it loads `config.js`, `js/app.js`, and the files in `assets/`
+as separate files, exactly like any real website's assets. If you
+only saved `index.html`, go back and grab the rest. As of this
+version, if any of that fails to load, a red banner across the top
+of the page will now tell you exactly what's missing instead of the
+page silently doing nothing.
+
 1. **Create a Supabase project** at [supabase.com](https://supabase.com)
    (free tier is enough for v1).
 2. **Run the schema.** Dashboard → SQL Editor → New query → paste the
