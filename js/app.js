@@ -191,6 +191,7 @@ function switchAuthTab(tab){
   document.getElementById('loginForm').classList.toggle('hidden', tab!=='login');
   document.getElementById('registerForm').classList.toggle('hidden', tab!=='register');
   document.getElementById('authMsg').classList.remove('show');
+  if(tab!=='login') document.getElementById('resendConfirmRow').classList.add('hidden');
 }
 function showAuthMsg(text, type){ const el=document.getElementById('authMsg'); el.textContent=text; el.className='form-msg show '+type; }
 
@@ -198,6 +199,7 @@ async function handleLogin(e){
   if(!requireBackend()) return;
   e.preventDefault();
   const btn = document.getElementById('loginSubmitBtn');
+  document.getElementById('resendConfirmRow').classList.add('hidden');
   if(Date.now() < loginLockedUntil){
     showAuthMsg(`Too many attempts. Try again in ${Math.ceil((loginLockedUntil-Date.now())/1000)}s.`, 'err');
     return;
@@ -209,6 +211,12 @@ async function handleLogin(e){
   btn.disabled = false;
 
   if(error){
+    const isUnconfirmed = /confirm/i.test(error.message);
+    if(isUnconfirmed){
+      showAuthMsg('Your email address hasn\'t been confirmed yet. Check your inbox (and spam folder) for the confirmation link, or resend it below.', 'err');
+      document.getElementById('resendConfirmRow').classList.remove('hidden');
+      return;
+    }
     loginAttempts++;
     if(loginAttempts>=MAX_LOGIN_ATTEMPTS){
       loginLockedUntil = Date.now()+LOCKOUT_MS; loginAttempts=0; btn.disabled=true;
@@ -225,6 +233,17 @@ async function handleLogin(e){
   setTimeout(closeAuth, 600);
 }
 
+async function resendConfirmation(){
+  if(!requireBackend()) return;
+  const email = document.getElementById('loginEmail').value.trim();
+  if(!email){ showAuthMsg('Enter your email above first, then resend the confirmation.', 'err'); return; }
+  const link = document.getElementById('resendConfirmLink');
+  link.textContent = 'Sending…';
+  const { error } = await sb.auth.resend({ type: 'signup', email });
+  link.textContent = 'Resend confirmation email';
+  showAuthMsg(error ? error.message : 'Confirmation email resent — check your inbox (and spam folder).', error ? 'err' : 'ok');
+}
+
 async function handleRegister(e){
   if(!requireBackend()) return;
   e.preventDefault();
@@ -236,11 +255,21 @@ async function handleRegister(e){
     email, password,
     options: { data: { name } }
   });
-  if(error){ showAuthMsg(error.message, 'err'); return; }
+  if(error){
+    if(/already registered|already exists|user already/i.test(error.message)){
+      switchAuthTab('login');
+      document.getElementById('loginEmail').value = email;
+      showAuthMsg('An account with that email already exists. Log in below — if you never confirmed it, use "Resend confirmation email" after trying to log in.', 'err');
+    } else {
+      showAuthMsg(error.message, 'err');
+    }
+    return;
+  }
 
   if(!data.session){
     showAuthMsg('Account created! Check your email to confirm before logging in.', 'ok');
     switchAuthTab('login');
+    document.getElementById('loginEmail').value = email;
     return;
   }
   await recordLoginEvent(data.user.id);
