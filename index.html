@@ -55,7 +55,8 @@ body{
 }
 body::before{
   content:"";
-  position:fixed; inset:0;
+  position:fixed; inset:-10%;
+  will-change:transform;
   background:
     radial-gradient(circle at 15% 8%, rgba(255,179,0,.14), transparent 40%),
     radial-gradient(circle at 85% 18%, rgba(255,213,74,.11), transparent 42%),
@@ -68,8 +69,8 @@ body::before{
   body::before{ animation:driftBg 24s ease-in-out infinite alternate; }
 }
 @keyframes driftBg{
-  0%{ background-position:0 0,0 0,0 0,0 0; }
-  100%{ background-position:30px -20px,-30px 20px,10px 10px,0 0; }
+  0%{ transform:translate(0,0) scale(1); }
+  100%{ transform:translate(-2%,2%) scale(1.04); }
 }
 h1,h2,h3,h4{ font-family:var(--font-display); letter-spacing:-.01em; }
 a{color:inherit; text-decoration:none;}
@@ -151,7 +152,7 @@ img{max-width:100%; display:block;}
 .brand-mark{
   width:34px; height:34px; border-radius:10px;
   background:conic-gradient(from 180deg, var(--violet), var(--cyan), var(--amber), var(--violet));
-  animation:spin 6s linear infinite;
+  animation:spin 6s linear infinite; will-change:transform;
   display:flex; align-items:center; justify-content:center; position:relative;
 }
 .brand-mark::after{ content:""; position:absolute; inset:3px; border-radius:8px; background:var(--bg-1); }
@@ -199,7 +200,7 @@ html[data-theme="light"] .theme-switch .knob{ transform:translateX(22px); backgr
 .hero-actions{ display:flex; gap:12px; flex-wrap:wrap; }
 .hero-visual{ position:relative; height:420px; }
 .orb-hero{
-  position:absolute; inset:0; margin:auto; width:300px; height:300px; border-radius:50%;
+  position:absolute; inset:0; margin:auto; width:300px; height:300px; border-radius:50%; will-change:transform;
   background:radial-gradient(circle at 32% 28%, #fff3, transparent 40%),
              conic-gradient(from 120deg, var(--violet), var(--cyan), var(--amber), var(--rose), var(--violet));
   filter:blur(2px); opacity:.9; animation:orbFloat 7s ease-in-out infinite, spin 18s linear infinite;
@@ -379,7 +380,7 @@ tr:last-child td{ border:none; }
 .solis-btn{
   position:fixed; bottom:24px; right:24px; width:62px; height:62px; border-radius:50%; z-index:400;
   border:none; cursor:pointer; background:var(--bg-1);
-  animation:orbFloat 4s ease-in-out infinite;
+  animation:orbFloat 4s ease-in-out infinite; will-change:transform;
   box-shadow:0 8px 30px -6px rgba(255,179,0,.55);
   display:flex; align-items:center; justify-content:center;
   overflow:visible;
@@ -387,7 +388,7 @@ tr:last-child td{ border:none; }
 .solis-btn::before{
   content:""; position:absolute; inset:-4px; border-radius:50%;
   background:conic-gradient(from 0deg,var(--violet),var(--cyan),var(--amber),var(--violet));
-  animation:spin 5s linear infinite; z-index:0;
+  animation:spin 5s linear infinite; z-index:0; will-change:transform;
 }
 .solis-btn::after{ content:""; position:absolute; inset:3px; border-radius:50%; background:var(--bg-1); z-index:0; }
 .solis-btn span{ position:relative; z-index:1; font-size:22px; }
@@ -1145,6 +1146,19 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
     }));
   }
   let particleRAF;
+  // Pre-render one small glow sprite once, instead of asking the canvas
+  // to recompute a shadowBlur for every particle on every single frame —
+  // shadowBlur is one of the most expensive 2D canvas operations, and
+  // doing it ~60 times per frame was the main source of loader jank.
+  const glowSprite = document.createElement('canvas');
+  glowSprite.width = glowSprite.height = 16;
+  const gctx = glowSprite.getContext('2d');
+  const grad = gctx.createRadialGradient(8,8,0,8,8,8);
+  grad.addColorStop(0, 'rgba(255,213,74,1)');
+  grad.addColorStop(1, 'rgba(255,213,74,0)');
+  gctx.fillStyle = grad;
+  gctx.fillRect(0,0,16,16);
+
   function drawParticles(t){
     ctx.clearRect(0,0,W,H);
     particles.forEach(p=>{
@@ -1153,13 +1167,11 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
       if(p.x < -10) p.x = W+10;
       if(p.x > W+10) p.x = -10;
       const tw = 0.5 + 0.5*Math.sin(t*p.twinkleSpeed + p.twinklePhase);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-      ctx.fillStyle = `rgba(255,213,74,${(p.alpha*tw).toFixed(3)})`;
-      ctx.shadowColor = 'rgba(255,213,74,0.8)';
-      ctx.shadowBlur = 6;
-      ctx.fill();
+      const size = p.r * 6;
+      ctx.globalAlpha = p.alpha * tw;
+      ctx.drawImage(glowSprite, p.x - size/2, p.y - size/2, size, size);
     });
+    ctx.globalAlpha = 1;
     if(document.getElementById('loader').style.display !== 'none') particleRAF = requestAnimationFrame(drawParticles);
   }
   resize(); initParticles();
