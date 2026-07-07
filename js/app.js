@@ -53,6 +53,10 @@ function requireBackend(){
   if(!backendReady){ showBackendBanner('⚠ This needs a connected backend — see README.md for setup.'); return false; }
   return true;
 }
+function debounce(fn, wait){
+  let t;
+  return (...args)=>{ clearTimeout(t); t = setTimeout(()=> fn(...args), wait); };
+}
 
 const OFFICER_POSITIONS = [
   "President","Vice President","Secretary","Assistant Secretary","Treasurer","Assistant Treasurer",
@@ -460,35 +464,40 @@ async function fetchAuditLog(){
 }
 
 function setupRealtimeSubscriptions(){
+  const debouncedAnnouncements = debounce(fetchAnnouncements, 400);
+  const debouncedEvents = debounce(fetchEvents, 400);
+  const debouncedNews = debounce(fetchNews, 400);
+  const debouncedProfiles = debounce(fetchProfiles, 400);
+
   sb.channel('public:announcements')
     .on('postgres_changes', {event:'INSERT', schema:'public', table:'announcements'}, (payload)=>{
       pushNotification(`<b>New announcement:</b> ${escapeHtml(payload.new.title)}`);
-      fetchAnnouncements();
+      debouncedAnnouncements();
     })
-    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'announcements'}, fetchAnnouncements)
-    .on('postgres_changes', {event:'DELETE', schema:'public', table:'announcements'}, fetchAnnouncements)
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'announcements'}, debouncedAnnouncements)
+    .on('postgres_changes', {event:'DELETE', schema:'public', table:'announcements'}, debouncedAnnouncements)
     .subscribe();
 
   sb.channel('public:events')
     .on('postgres_changes', {event:'INSERT', schema:'public', table:'events'}, (payload)=>{
       pushNotification(`<b>New event:</b> ${escapeHtml(payload.new.title)} — ${formatDate(payload.new.event_date)}`);
-      fetchEvents();
+      debouncedEvents();
     })
-    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'events'}, fetchEvents)
-    .on('postgres_changes', {event:'DELETE', schema:'public', table:'events'}, fetchEvents)
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'events'}, debouncedEvents)
+    .on('postgres_changes', {event:'DELETE', schema:'public', table:'events'}, debouncedEvents)
     .subscribe();
 
   sb.channel('public:news')
     .on('postgres_changes', {event:'INSERT', schema:'public', table:'news'}, (payload)=>{
       pushNotification(`<b>New story:</b> ${escapeHtml(payload.new.title)}`);
-      fetchNews();
+      debouncedNews();
     })
-    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'news'}, fetchNews)
-    .on('postgres_changes', {event:'DELETE', schema:'public', table:'news'}, fetchNews)
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'news'}, debouncedNews)
+    .on('postgres_changes', {event:'DELETE', schema:'public', table:'news'}, debouncedNews)
     .subscribe();
 
   sb.channel('public:profiles').on('postgres_changes', {event:'*', schema:'public', table:'profiles'}, async (payload)=>{
-    await fetchProfiles();
+    debouncedProfiles();
     if(state.currentUser && payload.new && payload.new.id===state.currentUser.id){
       if(payload.new.suspended){ await sb.auth.signOut(); return; }
       const roleChanged = payload.old && (
@@ -519,10 +528,23 @@ function checkUpcomingEventReminders(){
   });
 }
 
+const debouncedAdminStatsRefresh = debounce(()=>{
+  // Presence 'sync' fires for every visitor joining/leaving the whole
+  // site, for every connected client — not just admins. Re-querying
+  // the database on each one is wasted work for anyone not looking at
+  // the admin panel, and a real source of lag when several people are
+  // browsing at once.
+  if(document.getElementById('admin').classList.contains('hidden')) return;
+  renderAdminStats();
+}, 1200);
+
 function setupPresence(){
   presenceChannel = sb.channel('site-presence', { config: { presence: { key: presenceKey } } });
   presenceChannel
-    .on('presence', {event:'sync'}, renderAdminStats)
+    .on('presence', {event:'sync'}, ()=>{
+      updateHeroWidgets(); // cheap, local-only — keep this instant
+      debouncedAdminStatsRefresh();
+    })
     .subscribe((status)=>{ if(status==='SUBSCRIBED') trackPresence(); });
 }
 function trackPresence(){
@@ -574,7 +596,7 @@ function renderAnnouncements(){
     </div>
   `).join('') : `<div class="empty-state">No announcements match your search — try a different keyword or category.</div>`;
 }
-document.getElementById('annSearch').addEventListener('input', e=>{ state.annFilter.search=e.target.value; renderAnnouncements(); });
+document.getElementById('annSearch').addEventListener('input', debounce(e=>{ state.annFilter.search=e.target.value; renderAnnouncements(); }, 180));
 document.getElementById('annCategory').addEventListener('change', e=>{ state.annFilter.category=e.target.value; renderAnnouncements(); });
 
 async function toggleSave(id){
@@ -700,7 +722,7 @@ function renderNews(search=''){
     </div>
   `).join('') : `<div class="empty-state">No stories found.</div>`;
 }
-document.getElementById('newsSearch').addEventListener('input', e=> renderNews(e.target.value));
+document.getElementById('newsSearch').addEventListener('input', debounce(e=> renderNews(e.target.value), 180));
 
 /* ============================================================
    ADMIN — publish content
@@ -795,7 +817,7 @@ function renderAdminUsers(){
     </tr>`;
   }).join('') : `<tr><td colspan="7"><div class="empty-state">No members match that search.</div></td></tr>`;
 }
-document.getElementById('userSearch').addEventListener('input', e=>{ state.userFilter.search=e.target.value; renderAdminUsers(); });
+document.getElementById('userSearch').addEventListener('input', debounce(e=>{ state.userFilter.search=e.target.value; renderAdminUsers(); }, 180));
 document.getElementById('userFilterType').addEventListener('change', e=>{ state.userFilter.type=e.target.value; renderAdminUsers(); });
 document.getElementById('userFilterStatus').addEventListener('change', e=>{ state.userFilter.status=e.target.value; renderAdminUsers(); });
 
