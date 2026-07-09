@@ -113,6 +113,35 @@ config.js                           your Supabase URL + anon key
 js/app.js                           all application logic
 assets/solis-avatar.svg             Solis avatar
 assets/club-logo.svg                club logo / favicon
-supabase/schema.sql                 run this once in SQL Editor
+supabase/schema.sql                 run this once in SQL Editor on a brand-new project
+supabase/migrations/002_add_media_posts.sql   run this instead if schema.sql was already applied
 supabase/functions/delete-user/     optional edge function for full account deletion
 ```
+
+## Member media (photos/videos) + Collaborations
+
+Any logged-in, non-suspended member can share a photo or video, tagged
+to an event, an announcement, or a club collaboration. Collaborations
+themselves (title, partner club, description, date) are posted by
+admins from the same "Publish content" panel as announcements/events.
+
+- **Brand-new project** — `schema.sql` already includes all of this;
+  just follow Setup above.
+- **Existing project** (you already ran `schema.sql` once before this
+  feature existed) — don't re-run the whole file, it'll fail with
+  "relation already exists." Instead, run
+  `supabase/migrations/002_add_media_posts.sql` once in the SQL
+  Editor — it only adds the new tables/bucket/policies and won't
+  touch anything you already have.
+
+A few real constraints worth knowing:
+- Images up to 15MB, videos up to 100MB (enforced both in the browser
+  and on the storage bucket itself, so they can't drift out of sync).
+- Files are stored in a public "media" bucket, under a folder named
+  after each member's user id — that's what stops one member from
+  overwriting or deleting another member's uploads directly in
+  storage, independent of the app's own UI.
+- A member can delete their own upload; an admin can delete anyone's
+  (moderation). Deleting a collaboration/event/announcement doesn't
+  delete media that referenced it — the media just becomes unlinked.
+
