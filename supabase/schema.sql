@@ -196,6 +196,26 @@ create policy "news_update_admin" on public.news for update using (public.is_adm
 create policy "news_delete_admin" on public.news for delete using (public.is_admin());
 
 -- ============================================================
+-- COLLABORATIONS  (cross-club partnerships, admin-managed like
+-- announcements/events; members can attach media to these — see
+-- the MEDIA POSTS table further down, which links to this one)
+-- ============================================================
+create table public.collaborations (
+  id           bigint generated always as identity primary key,
+  title        text not null,
+  partner_club text not null,
+  description  text,
+  collab_date  timestamptz,
+  created_by   uuid references public.profiles(id),
+  created_at   timestamptz not null default now()
+);
+alter table public.collaborations enable row level security;
+create policy "collaborations_select_all" on public.collaborations for select using (true);
+create policy "collaborations_write_admin" on public.collaborations for insert with check (public.is_admin());
+create policy "collaborations_update_admin" on public.collaborations for update using (public.is_admin());
+create policy "collaborations_delete_admin" on public.collaborations for delete using (public.is_admin());
+
+-- ============================================================
 -- SAVED ANNOUNCEMENTS  (per-member bookmarks)
 -- ============================================================
 create table public.saved_announcements (
@@ -259,6 +279,82 @@ alter publication supabase_realtime add table public.news;
 alter publication supabase_realtime add table public.profiles;
 
 -- ============================================================
+-- MEDIA POSTS  (members can share photos/videos for events,
+-- announcements, or club collaborations)
+-- ============================================================
+create table public.media_posts (
+  id              bigint generated always as identity primary key,
+  uploader_id     uuid references public.profiles(id) on delete cascade,
+  uploader_name   text not null,
+  category        text not null check (category in ('event','announcement','collaboration')),
+  event_id        bigint references public.events(id) on delete set null,
+  announcement_id bigint references public.announcements(id) on delete set null,
+  collaboration_id bigint references public.collaborations(id) on delete set null,
+  caption         text,
+  storage_path    text not null,
+  media_url       text not null,
+  media_type      text not null check (media_type in ('image','video')),
+  created_at      timestamptz not null default now()
+);
+alter table public.media_posts enable row level security;
+
+-- Anyone can view shared media
+create policy "media_posts_select_all" on public.media_posts for select using (true);
+-- Any active (non-suspended) member can post, but only as themselves
+create policy "media_posts_insert_own" on public.media_posts for insert
+  with check (
+    auth.uid() = uploader_id
+    and exists (select 1 from public.profiles where id = auth.uid() and suspended = false)
+  );
+-- A member can edit/remove their own post; admins can moderate any post
+create policy "media_posts_update_own_or_admin" on public.media_posts for update
+  using (auth.uid() = uploader_id or public.is_admin());
+create policy "media_posts_delete_own_or_admin" on public.media_posts for delete
+  using (auth.uid() = uploader_id or public.is_admin());
+
+alter publication supabase_realtime add table public.media_posts;
+alter publication supabase_realtime add table public.collaborations;
+
+-- ---- Storage bucket for the actual image/video files ----
+-- "media" is public-read (so shared photos/videos display on the site
+-- without extra auth), but uploads require a real login, and each
+-- member can only write into their own folder (named after their user
+-- id) — this is what stops one member from overwriting or deleting
+-- another member's files directly in storage.
+-- file_size_limit is set to 100MB to match MAX_VIDEO_BYTES in app.js —
+-- keep these two in sync if you change either one.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'media', 'media', true, 104857600,
+  array['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm','video/quicktime']
+)
+on conflict (id) do update set
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+create policy "media_bucket_public_read"
+on storage.objects for select
+using (bucket_id = 'media');
+
+create policy "media_bucket_authenticated_upload"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'media'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+create policy "media_bucket_delete_own_or_admin"
+on storage.objects for delete
+using (
+  bucket_id = 'media'
+  and (
+    (storage.foldername(name))[1] = auth.uid()::text
+    or public.is_admin()
+  )
+);
+
+-- ============================================================
 -- SEED DATA (safe to delete/edit later from the admin dashboard)
 -- ============================================================
 insert into public.announcements (title, body, category, pinned, author) values
@@ -281,6 +377,9 @@ insert into public.news (title, category, icon, body) values
 ('New makerspace opens in the library wing', 'Campus', '🛠️', '3D printers, laser cutters, and a recording booth are now open for student use during free periods.'),
 ('Alumni spotlight: from student council to city council', 'Alumni', '🏛️', 'A 2016 graduate reflects on the debate club habits that shaped a career in public service.'),
 ('Music department announces spring showcase lineup', 'Arts', '🎵', 'Twelve student ensembles will perform, including two new original compositions.');
+
+insert into public.collaborations (title, partner_club, description, collab_date) values
+('Joint photo walk with the Photography Society', 'Photography Society', 'A cross-club outing around campus to shoot for both clubs'' spring galleries.', now() + interval '9 days');
 
 -- ============================================================
 -- FIRST ADMINISTRATOR
