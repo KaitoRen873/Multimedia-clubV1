@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSHS Multimedia Club — Join Portal</title>
+<meta name="description" content="Join the MSHS Multimedia Club. Capture moments. Create stories. Build your creativity.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+/* =========================================================
+   TOKENS
+   ========================================================= */
+:root{
+  --ink:        #0b0b0c;
+  --ink-soft:   #17171a;
+  --yellow:     #ffd400;
+  --yellow-dim: #d8b400;
+  --white:      #ffffff;
+  --paper:      #f6f5f1;
+  --gray-900:   #1c1c1f;
+  --gray-700:   #4a4a4f;
+  --gray-400:   #8a8a8f;
+  --gray-200:   #d8d8d4;
+  --gray-100:   #ececea;
+  --radius:     18px;
+  --ease:       cubic-bezier(.16,.84,.44,1);
+  --display:    'Space Grotesk', sans-serif;
+  --body:       'Inter', sans-serif;
+  --mono:       'JetBrains Mono', monospace;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html{ scroll-behavior:smooth; }
+body{
+  font-family:var(--body);
+  background:var(--paper);
+  color:var(--ink);
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+img,svg{ display:block; max-width:100%; }
+a{ color:inherit; text-decoration:none; }
+ul{ list-style:none; }
+button{ font-family:inherit; cursor:pointer; }
+h1,h2,h3,h4{ font-family:var(--display); line-height:1.08; letter-spacing:-0.01em; }
+
+.wrap{ max-width:1180px; margin:0 auto; padding:0 24px; }
+.eyebrow{
+  font-family:var(--mono);
+  font-size:.72rem;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--yellow-dim);
+  display:flex; align-items:center; gap:8px;
+  margin-bottom:14px;
+}
+.eyebrow::before{
+  content:"●"; color:#e23b3b; font-size:.6rem; animation:pulse-rec 1.6s infinite;
+}
+@keyframes pulse-rec{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
+.eyebrow.on-dark{ color:var(--yellow); }
+
+section{ position:relative; }
+.section-pad{ padding:110px 0; }
+@media(max-width:780px){ .section-pad{ padding:72px 0; } }
+
+.btn{
+  display:inline-flex; align-items:center; gap:10px;
+  padding:16px 30px;
+  border-radius:100px;
+  font-weight:600;
+  font-size:.95rem;
+  border:2px solid transparent;
+  transition:transform .35s var(--ease), box-shadow .35s var(--ease), background .25s, color .25s, border-color .25s;
+}
+.btn-primary{
+  background:var(--yellow); color:var(--ink);
+  box-shadow:0 0 0 0 rgba(255,212,0,.5);
+}
+.btn-primary:hover{ transform:translateY(-3px); box-shadow:0 14px 30px -8px rgba(255,212,0,.55); }
+.btn-ghost{
+  background:transparent; color:var(--white); border-color:rgba(255,255,255,.35);
+}
+.btn-ghost:hover{ border-color:var(--yellow); color:var(--yellow); transform:translateY(-3px); }
+.btn-dark{
+  background:var(--ink); color:var(--white);
+}
+.btn-dark:hover{ transform:translateY(-3px); box-shadow:0 14px 30px -10px rgba(0,0,0,.4); }
+
+.reveal{ opacity:0; transform:translateY(28px); transition:opacity .8s var(--ease), transform .8s var(--ease); }
+.reveal.is-visible{ opacity:1; transform:translateY(0); }
+
+/* =========================================================
+   NAV
+   ========================================================= */
+header{
+  position:fixed; top:0; left:0; right:0; z-index:200;
+  background:rgba(11,11,12,.72);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.nav{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 24px; max-width:1180px; margin:0 auto;
+}
+.brand{
+  display:flex; align-items:center; gap:10px;
+  font-family:var(--display); font-weight:700; font-size:1.05rem; color:var(--white);
+}
+.brand .mark{
+  width:38px; height:38px; border-radius:10px;
+  background:var(--yellow); color:var(--ink);
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.1rem; font-weight:700;
+  transform:rotate(-6deg);
+}
+.brand small{ display:block; font-family:var(--mono); font-weight:400; font-size:.62rem; letter-spacing:.1em; color:var(--gray-400); text-transform:uppercase; }
+
+.nav-links{ display:flex; align-items:center; gap:30px; }
+.nav-links a{
+  color:var(--gray-200); font-size:.9rem; font-weight:500; position:relative; padding:4px 0;
+}
+.nav-links a::after{
+  content:""; position:absolute; left:0; bottom:-2px; width:0; height:2px; background:var(--yellow);
+  transition:width .3s var(--ease);
+}
+.nav-links a:hover{ color:var(--white); }
+.nav-links a:hover::after{ width:100%; }
+.nav-cta{ display:flex; align-items:center; gap:14px; }
+.nav-cta .btn{ padding:11px 22px; font-size:.85rem; }
+
+.burger{ display:none; flex-direction:column; gap:5px; background:none; border:0; }
+.burger span{ width:24px; height:2px; background:var(--white); border-radius:2px; }
+
+.mobile-menu{
+  display:none; flex-direction:column; gap:2px; background:var(--ink);
+  border-top:1px solid rgba(255,255,255,.08);
+}
+.mobile-menu a{
+  padding:16px 24px; color:var(--gray-200); border-bottom:1px solid rgba(255,255,255,.06); font-size:.95rem;
+}
+.mobile-menu.open{ display:flex; }
+
+@media(max-width:900px){
+  .nav-links, .nav-cta .btn-ghost{ display:none; }
+  .burger{ display:flex; }
+}
+
+/* =========================================================
+   HERO
+   ========================================================= */
+.hero{
+  background:var(--ink);
+  color:var(--white);
+  min-height:100vh;
+  display:flex; align-items:center;
+  padding-top:120px;
+  overflow:hidden;
+  position:relative;
+}
+.hero::before, .hero::after{
+  content:""; position:absolute; border-radius:50%; filter:blur(90px); pointer-events:none;
+}
+.hero::before{ width:420px; height:420px; background:rgba(255,212,0,.28); top:-120px; right:-80px; animation:drift 12s ease-in-out infinite; }
+.hero::after{ width:340px; height:340px; background:rgba(255,212,0,.14); bottom:-100px; left:-60px; animation:drift 14s ease-in-out infinite reverse; }
+@keyframes drift{ 0%,100%{ transform:translate(0,0);} 50%{ transform:translate(30px,20px);} }
+
+.hero-grid{
+  position:relative; z-index:2;
+  display:grid; grid-template-columns:1.15fr .85fr; gap:40px; align-items:center;
+}
+@media(max-width:960px){ .hero-grid{ grid-template-columns:1fr; } }
+
+.viewfinder{ position:relative; padding:34px 8px; }
+.vf-corner{ position:absolute; width:26px; height:26px; border:2px solid var(--yellow); opacity:.85; }
+.vf-corner.tl{ top:0; left:0; border-right:0; border-bottom:0; }
+.vf-corner.tr{ top:0; right:0; border-left:0; border-bottom:0; }
+.vf-corner.bl{ bottom:0; left:0; border-right:0; border-top:0; }
+.vf-corner.br{ bottom:0; right:0; border-left:0; border-top:0; }
+
+.hero h1{
+  font-size:clamp(2.5rem, 5.4vw, 4.3rem);
+  font-weight:700;
+  margin-bottom:22px;
+}
+.hero h1 span{ color:var(--yellow); }
+.hero p.lead{
+  font-size:1.18rem; color:var(--gray-200); max-width:520px; margin-bottom:36px;
+}
+.hero-actions{ display:flex; gap:16px; flex-wrap:wrap; }
+
+.hud-tag{
+  position:absolute; font-family:var(--mono); font-size:.68rem; letter-spacing:.08em;
+  color:var(--yellow); background:rgba(255,212,0,.08); border:1px solid rgba(255,212,0,.3);
+  padding:4px 9px; border-radius:6px; z-index:3;
+}
+
+.hero-stage{ position:relative; height:460px; }
+@media(max-width:960px){ .hero-stage{ height:340px; margin-top:10px; } }
+.float-icon{
+  position:absolute; background:var(--ink-soft); border:1px solid rgba(255,212,0,.25);
+  border-radius:20px; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 20px 50px -18px rgba(0,0,0,.7);
+  animation:float 6s ease-in-out infinite;
+}
+.float-icon svg{ stroke:var(--yellow); }
+.float-icon.f1{ width:110px; height:110px; top:4%;  left:8%;  animation-delay:0s; }
+.float-icon.f2{ width:92px;  height:92px;  top:6%;  right:6%; animation-delay:.8s; }
+.float-icon.f3{ width:100px; height:100px; top:38%; left:36%; animation-delay:1.6s; }
+.float-icon.f4{ width:96px;  height:96px;  bottom:26%; left:2%; animation-delay:.4s; }
+.float-icon.f5{ width:90px;  height:90px;  bottom:22%; right:10%; animation-delay:1.2s; }
+.float-icon.f6{ width:86px;  height:86px;  bottom:0%; left:32%; animation-delay:2s; }
+.float-icon.f7{ width:130px; height:76px;  top:56%;  right:0%; animation-delay:.2s; border-radius:14px; }
+@keyframes float{ 0%,100%{ transform:translateY(0) rotate(0deg); } 50%{ transform:translateY(-16px) rotate(-3deg); } }
+
+.filmstrip{
+  height:34px; background:repeating-linear-gradient(90deg, var(--ink) 0 26px, var(--yellow) 26px 30px);
+  position:relative;
+}
+.filmstrip::before, .filmstrip::after{
+  content:""; position:absolute; left:0; right:0; height:8px; background:var(--ink);
+  background-image:repeating-linear-gradient(90deg, transparent 0 10px, var(--paper) 10px 16px);
+}
+.filmstrip::before{ top:0; } .filmstrip::after{ bottom:0; }
+
+/* =========================================================
+   ABOUT
+   ========================================================= */
+.about{ background:var(--paper); }
+.about-grid{ display:grid; grid-template-columns:.9fr 1.1fr; gap:60px; align-items:start; }
+@media(max-width:860px){ .about-grid{ grid-template-columns:1fr; gap:36px; } }
+.about h2{ font-size:clamp(1.9rem,3.4vw,2.7rem); margin-bottom:18px; }
+.about .lead-text{ font-size:1.08rem; color:var(--gray-700); margin-bottom:14px; }
+
+.about-facts{ display:grid; gap:14px; }
+.fact{
+  background:var(--white); border:1px solid var(--gray-200); border-radius:16px;
+  padding:20px 22px; display:flex; gap:16px; align-items:flex-start;
+  transition:transform .3s var(--ease), border-color .3s;
+}
+.fact:hover{ transform:translateX(6px); border-color:var(--yellow); }
+.fact .num{ font-family:var(--mono); color:var(--yellow-dim); font-weight:600; }
+.fact h4{ font-size:1rem; margin-bottom:4px; }
+.fact p{ color:var(--gray-700); font-size:.92rem; }
+
+.events-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
+.event-chip{
+  font-family:var(--mono); font-size:.75rem; letter-spacing:.03em;
+  padding:8px 14px; border-radius:100px; background:var(--ink); color:var(--yellow);
+}
+
+/* =========================================================
+   LEARN CARDS
+   ========================================================= */
+.learn{ background:var(--ink); color:var(--white); }
+.section-head{ max-width:640px; margin-bottom:52px; }
+.section-head h2{ font-size:clamp(1.9rem,3.6vw,2.8rem); }
+.section-head.on-dark p{ color:var(--gray-400); }
+.section-head p{ color:var(--gray-700); margin-top:14px; font-size:1.05rem; }
+
+.card-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
+@media(max-width:980px){ .card-grid{ grid-template-columns:repeat(2,1fr); } }
+@media(max-width:560px){ .card-grid{ grid-template-columns:1fr; } }
+
+.skill-card{
+  background:var(--ink-soft); border:1px solid rgba(255,255,255,.08); border-radius:var(--radius);
+  padding:28px 22px; transition:transform .4s var(--ease), border-color .4s, background .4s;
+}
+.skill-card:hover{ transform:translateY(-8px); border-color:var(--yellow); background:#1f1f22; }
+.skill-icon{
+  width:52px; height:52px; border-radius:14px; background:rgba(255,212,0,.12);
+  display:flex; align-items:center; justify-content:center; margin-bottom:18px;
+}
+.skill-icon svg{ stroke:var(--yellow); }
+.skill-card h3{ font-size:1.08rem; margin-bottom:8px; }
+.skill-card p{ font-size:.88rem; color:var(--gray-400); }
+
+/* =========================================================
+   WHY JOIN
+   ========================================================= */
+.why{ background:var(--paper); }
+.why-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:18px; }
+@media(max-width:760px){ .why-grid{ grid-template-columns:1fr; } }
+.why-item{
+  display:flex; gap:16px; align-items:flex-start; background:var(--white);
+  border-radius:16px; padding:22px; border:1px solid var(--gray-200);
+  transition:transform .3s var(--ease), box-shadow .3s;
+}
+.why-item:hover{ transform:translateY(-4px); box-shadow:0 20px 40px -22px rgba(0,0,0,.25); }
+.why-check{
+  flex:0 0 auto; width:34px; height:34px; border-radius:10px; background:var(--yellow);
+  display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--ink);
+}
+.why-item h4{ font-size:1rem; margin-bottom:4px; }
+.why-item p{ font-size:.9rem; color:var(--gray-700); }
+
+/* =========================================================
+   REGISTER FORM
+   ========================================================= */
+.register{ background:var(--ink); color:var(--white); }
+.register-shell{
+  background:var(--ink-soft); border:1px solid rgba(255,212,0,.2); border-radius:24px;
+  padding:44px; display:grid; grid-template-columns:.8fr 1.2fr; gap:44px;
+}
+@media(max-width:860px){ .register-shell{ grid-template-columns:1fr; padding:28px 22px; } }
+
+.register-info h2{ font-size:clamp(1.7rem,3vw,2.3rem); margin-bottom:16px; }
+.register-info p{ color:var(--gray-400); margin-bottom:22px; }
+.register-list li{ display:flex; gap:10px; font-size:.92rem; color:var(--gray-200); margin-bottom:10px; }
+.register-list li::before{ content:"▸"; color:var(--yellow); }
+
+.form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+@media(max-width:560px){ .form-grid{ grid-template-columns:1fr; } }
+.field{ display:flex; flex-direction:column; gap:7px; }
+.field.full{ grid-column:1 / -1; }
+.field label{ font-size:.82rem; font-weight:500; color:var(--gray-200); }
+.field label .req{ color:var(--yellow); }
+.field input, .field select{
+  background:#0f0f11; border:1px solid rgba(255,255,255,.16); border-radius:10px;
+  padding:13px 14px; color:var(--white); font-size:.95rem; font-family:var(--body);
+  transition:border-color .25s, box-shadow .25s;
+}
+.field input::placeholder{ color:#66666b; }
+.field input:focus, .field select:focus{
+  outline:none; border-color:var(--yellow); box-shadow:0 0 0 3px rgba(255,212,0,.15);
+}
+.field .err{ font-size:.76rem; color:#ff7676; min-height:14px; }
+.field.has-error input, .field.has-error select{ border-color:#ff5c5c; }
+
+.checkline{ display:flex; gap:12px; align-items:flex-start; margin-top:6px; }
+.checkline input{ margin-top:3px; width:18px; height:18px; accent-color:var(--yellow); flex:0 0 auto; }
+.checkline label{ font-size:.88rem; color:var(--gray-200); }
+
+.submit-row{ display:flex; align-items:center; gap:18px; margin-top:8px; flex-wrap:wrap; }
+.submit-row .btn{ border:none; }
+.submit-row .btn:disabled{ opacity:.55; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
+
+.form-status{
+  border-radius:14px; padding:16px 18px; font-size:.92rem; display:none; flex-direction:column; gap:14px; align-items:flex-start;
+}
+.form-status.show{ display:flex; }
+.form-status.success{ background:rgba(255,212,0,.12); border:1px solid rgba(255,212,0,.4); color:var(--yellow); }
+.form-status.error{ background:rgba(255,92,92,.1); border:1px solid rgba(255,92,92,.4); color:#ff8b8b; }
+.status-action{
+  display:inline-flex; align-items:center; gap:8px;
+  background:var(--yellow); color:var(--ink); font-weight:600; font-size:.88rem;
+  padding:11px 22px; border-radius:100px; transition:transform .3s var(--ease);
+}
+.status-action:hover{ transform:translateY(-2px); }
+
+/* =========================================================
+   FAQ
+   ========================================================= */
+.faq{ background:var(--paper); }
+.faq-list{ max-width:800px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+.faq-item{ background:var(--white); border:1px solid var(--gray-200); border-radius:14px; overflow:hidden; }
+.faq-q{
+  width:100%; text-align:left; background:none; border:0; padding:20px 22px;
+  display:flex; justify-content:space-between; align-items:center; gap:16px;
+  font-weight:600; font-size:.98rem; color:var(--ink);
+}
+.faq-q .plus{ font-family:var(--mono); font-size:1.2rem; color:var(--yellow-dim); transition:transform .35s var(--ease); flex:0 0 auto; }
+.faq-item.open .faq-q .plus{ transform:rotate(45deg); }
+.faq-a{ max-height:0; overflow:hidden; transition:max-height .4s var(--ease); }
+.faq-a p{ padding:0 22px 20px; color:var(--gray-700); font-size:.92rem; }
+
+/* =========================================================
+   CONTACT
+   ========================================================= */
+.contact{ background:var(--ink); color:var(--white); }
+.contact-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:18px; }
+@media(max-width:860px){ .contact-grid{ grid-template-columns:repeat(2,1fr); } }
+@media(max-width:520px){ .contact-grid{ grid-template-columns:1fr; } }
+.contact-card{
+  background:var(--ink-soft); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:24px;
+  transition:border-color .3s, transform .3s var(--ease);
+}
+.contact-card:hover{ border-color:var(--yellow); transform:translateY(-4px); }
+.contact-card .ico{ width:38px; height:38px; margin-bottom:14px; }
+.contact-card .ico svg{ stroke:var(--yellow); }
+.contact-card h4{ font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--gray-400); margin-bottom:8px; font-family:var(--mono); }
+.contact-card p{ font-size:1rem; font-weight:500; word-break:break-word; }
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+footer{ background:#000; color:var(--gray-400); padding:36px 0; }
+.footer-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; font-size:.82rem; }
+.footer-row .foot-brand{ color:var(--white); font-family:var(--display); font-weight:600; }
+.footer-row a:hover{ color:var(--yellow); }
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+  html{ scroll-behavior:auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================= NAV ============================= -->
+<header>
+  <nav class="nav">
+    <a href="admin.html" class="brand">
+      <span class="mark">M</span>
+      <span>MSHS Multimedia Club<small>Join Portal</small></span>
+    </a>
+    <div class="nav-links">
+      <a href="#about">About</a>
+      <a href="#learn">What You'll Learn</a>
+      <a href="#why">Why Join</a>
+      <a href="#faq">FAQ</a>
+      <a href="#contact">Contact</a>
+      <a href="index.html">Back To Main Website</a>>
+    </div>
+    <div class="nav-cta">
+      <a href="#" id="memberLoginLink" class="btn btn-ghost">Member Login</a>
+      <a href="#register" class="btn btn-primary">Join Now</a>
+      <button class="burger" id="burgerBtn" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#about">About</a>
+    <a href="#learn">What You'll Learn</a>
+    <a href="#why">Why Join</a>
+    <a href="#register">Register</a>
+    <a href="#faq">FAQ</a>
+    <a href="#contact">Contact</a>
+    <a href="index.html">Back To Main</a>
+    <a href="#" id="memberLoginLinkMobile">Member Login</a>
+  </div>
+</header>
+
+<!-- ============================= HERO ============================= -->
+<section class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div class="viewfinder">
+      <span class="vf-corner tl"></span><span class="vf-corner tr"></span>
+      <span class="vf-corner bl"></span><span class="vf-corner br"></span>
+      <p class="eyebrow on-dark">REC · NOW ACCEPTING MEMBERS · SY 2026&ndash;2027</p>
+      <h1>Join the <span>MSHS Multimedia Club</span></h1>
+      <p class="lead">Capture moments. Create stories. Build your creativity.</p>
+      <div class="hero-actions">
+        <a href="#register" class="btn btn-primary">Join Now</a>
+        <a href="#about" class="btn btn-ghost">Learn More</a>
+      </div>
+    </div>
+
+    <div class="hero-stage" aria-hidden="true">
+      <span class="hud-tag" style="top:0; left:38%;">ISO 400</span>
+      <span class="hud-tag" style="bottom:8%; right:2%;">00:04:12</span>
+      <span class="hud-tag" style="top:48%; left:0;">f/2.8</span>
+
+      <div class="float-icon f1" title="Camera">
+        <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      </div>
+      <div class="float-icon f2" title="Video camera">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/></svg>
+      </div>
+      <div class="float-icon f3" title="Microphone">
+        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v4"/><path d="M8 22h8"/></svg>
+      </div>
+      <div class="float-icon f4" title="Paint brush">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5c1.5-1.5 4-1.5 5 0s1.5 3.5 0 5l-7.5 7.5-5 1 1-5z"/><path d="M9 15l-3 3"/></svg>
+      </div>
+      <div class="float-icon f5" title="Computer monitor">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8"/><path d="M12 16v4"/></svg>
+      </div>
+      <div class="float-icon f6" title="Editing timeline">
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h18"/><path d="M3 16h18"/><rect x="5" y="6" width="5" height="4" rx="1"/><rect x="13" y="14" width="6" height="4" rx="1"/></svg>
+      </div>
+      <div class="float-icon f7" title="Film strip">
+        <svg width="56" height="34" viewBox="0 0 56 34" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="52" height="30" rx="3"/><path d="M2 8h6M2 26h6M48 8h6M48 26h6M2 17h6M48 17h6"/><rect x="14" y="7" width="10" height="20" rx="1"/><rect x="30" y="7" width="10" height="20" rx="1"/></svg>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="filmstrip" aria-hidden="true"></div>
+
+<!-- ============================= ABOUT ============================= -->
+<section class="about section-pad" id="about">
+  <div class="wrap about-grid">
+    <div class="reveal">
+      <p class="eyebrow">About the club</p>
+      <h2>Where curious storytellers become confident creators.</h2>
+      <p class="lead-text">The MSHS Multimedia Club is the school's official student-run creative team — the people behind the photos, videos, graphics, and live coverage you see at every major school event.</p>
+      <p class="lead-text">Members learn hands-on, working in small crews to plan, shoot, edit, and publish real content for a real audience — no experience required, just curiosity and a willingness to try.</p>
+      <div class="events-row">
+        <span class="event-chip">Foundation Day</span>
+        <span class="event-chip">Sports Fest</span>
+        <span class="event-chip">Recognition Day</span>
+        <span class="event-chip">Intramurals</span>
+        <span class="event-chip">School Assemblies</span>
+        <span class="event-chip">Clubs & Org Fairs</span>
+      </div>
+    </div>
+    <div class="about-facts reveal">
+      <div class="fact"><span class="num">01</span><div><h4>What you'll learn</h4><p>Photography, videography, graphic design, editing, writing, and social media — taught by officers and hands-on practice.</p></div></div>
+      <div class="fact"><span class="num">02</span><div><h4>Benefits of joining</h4><p>A real portfolio, certificates of recognition, and a creative community that covers every big moment on campus.</p></div></div>
+      <div class="fact"><span class="num">03</span><div><h4>Skills you'll build</h4><p>Technical craft plus teamwork, deadlines, communication, and leadership — skills that carry past graduation.</p></div></div>
+      <div class="fact"><span class="num">04</span><div><h4>Events you'll cover</h4><p>From pep rallies to graduation, members document school life across photo, video, and live social coverage.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= LEARN ============================= -->
+<section class="learn section-pad" id="learn">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow on-dark">What you'll learn</p>
+      <h2>Eight crafts. One club.</h2>
+      <p>Rotate through specialties or go deep on one — every skill here is one you'll actually use on real school productions.</p>
+    </div>
+    <div class="card-grid">
+
+      <div class="skill-card reveal">
+        <div class="skill-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg></div>
+        <h3>Photography</h3>
+        <p>Composition, lighting, and candid timing for events, portraits, and campus life.</p>
+      </div>
+
+      <div class="skill-card reveal">
+        <div class="skill-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/></svg></div>
+        <h3>Videography</h3>
+        <p>Camera handling, shot framing, and coverage planning for live school events.</p>
+      </div>
+
+      <div class="skill-card reveal">
+        <div class="skill-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 15l-5-5-4 4-3-3-6 6"/></svg></div>
+        <h3>Graphic Design</h3>
+        <p>Posters, layouts, and social templates using color, type, and layout basics.</p>
+      </div>
+
+      <div class="skill-card reveal">
+        <div class="skill-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h18"/><path d="M3 16h18"/><rect x="5" y="6" width="5" height="4" rx="1"/><rect x="13" y="14" width="6" height="4" rx="1"/></svg></div>
+        <h3>Video Editing</h3>
+        <p>Cutting, pacing, sound, and color to turn raw footage into a finished story.</p>
+      </div>
+
+      <div class="skill-card reveal">
+        <div class="skill-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H8l-4 4z"/><path d="M8 9h8M8 12h5"/></svg></div>
+        <h3>Journalism</h3>
+        <p>Interviewing, reporting, and writing clear, engaging stories on deadline.</p>
+      </div>
+
+      <div class="skill-card reveal">
+        <div class="skill-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>
+        <h3>Public Relations</h3>
+        <p>Representing the club and school with clear, confident communication.</p>
+      </div>
+
+      <div class="skill-card reveal">
+        <div class="skill-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="9" r="2.2"/><path d="M8 17c0-2 2-3 4-3s4 1 4 3"/></svg></div>
+        <h3>Social Media Management</h3>
+        <p>Planning posts, captions, and calendars that grow the club's online presence.</p>
+      </div>
+
+      <div class="skill-card reveal">
+        <div class="skill-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 9h20M8 4v5M16 4v5"/><circle cx="12" cy="15" r="2"/></svg></div>
+        <h3>Event Documentation</h3>
+        <p>Full-coverage teamwork: planning shot lists and capturing an event start to finish.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================= WHY JOIN ============================= -->
+<section class="why section-pad" id="why">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">Why join</p>
+      <h2>What you'll walk away with.</h2>
+    </div>
+    <div class="why-grid">
+      <div class="why-item reveal"><span class="why-check">✓</span><div><h4>Industry-standard skills</h4><p>Learn tools and techniques used by real creative professionals.</p></div></div>
+      <div class="why-item reveal"><span class="why-check">✓</span><div><h4>Cover real school events</h4><p>Put your skills to work at assemblies, sports fests, and more.</p></div></div>
+      <div class="why-item reveal"><span class="why-check">✓</span><div><h4>Meet new friends</h4><p>Join a crew of students who share your creative energy.</p></div></div>
+      <div class="why-item reveal"><span class="why-check">✓</span><div><h4>Build your portfolio</h4><p>Walk away with real published work to show for it.</p></div></div>
+      <div class="why-item reveal"><span class="why-check">✓</span><div><h4>Earn certificates</h4><p>Get recognized for your contributions and participation.</p></div></div>
+      <div class="why-item reveal"><span class="why-check">✓</span><div><h4>Leadership opportunities</h4><p>Grow into officer and project-lead roles as you gain experience.</p></div></div>
+      <div class="why-item reveal"><span class="why-check">✓</span><div><h4>Teamwork & communication</h4><p>Sharpen the soft skills that matter in any future career.</p></div></div>
+      <div class="why-item reveal"><span class="why-check">✓</span><div><h4>It's free to join</h4><p>All you need is enthusiasm and a willingness to learn.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= REGISTER ============================= -->
+<section class="register section-pad" id="register">
+  <div class="wrap">
+    <div class="register-shell reveal">
+      <div class="register-info">
+        <p class="eyebrow on-dark">Registration</p>
+        <h2>Apply to join</h2>
+        <p>Fill out the form to submit your application and create your member account in the same step. Once approved, log in on the main Multimedia Club website using the email and password you set here.</p>
+        <ul class="register-list">
+          <li>Takes less than 3 minutes</li>
+          <li>Open to all grade levels and sections</li>
+          <li>No experience necessary</li>
+          <li>Creates your login for the main club site</li>
+        </ul>
+      </div>
+
+      <form id="applicationForm" novalidate>
+        <div class="form-grid">
+
+          <div class="field full" id="field-full_name">
+            <label for="full_name">Full Name <span class="req">*</span></label>
+            <input type="text" id="full_name" name="full_name" placeholder="Juan Dela Cruz" autocomplete="name">
+            <span class="err"></span>
+          </div>
+
+          <div class="field" id="field-grade_level">
+            <label for="grade_level">Grade Level <span class="req">*</span></label>
+            <select id="grade_level" name="grade_level">
+              <option value="" disabled selected>Select grade level</option><option>Grade 11</option><option>Grade 12</option>
+            </select>
+            <span class="err"></span>
+          </div>
+
+          <div class="field" id="field-section">
+            <label for="section">Section <span class="req">*</span></label>
+            <input type="text" id="section" name="section" placeholder="e.g. Rizal">
+            <span class="err"></span>
+          </div>
+
+          <div class="field" id="field-email">
+            <label for="email">Email Address <span class="req">*</span></label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email">
+            <span class="err"></span>
+          </div>
+
+          <div class="field" id="field-password">
+            <label for="password">Create Password <span class="req">*</span></label>
+            <input type="password" id="password" name="password" placeholder="At least 8 characters" autocomplete="new-password">
+            <span class="err"></span>
+          </div>
+
+          <div class="field" id="field-confirm_password">
+            <label for="confirm_password">Confirm Password <span class="req">*</span></label>
+            <input type="password" id="confirm_password" name="confirm_password" placeholder="Re-enter your password" autocomplete="new-password">
+            <span class="err"></span>
+          </div>
+
+          <div class="field full" id="field-preferred_specialty">
+            <label for="preferred_specialty">Preferred Multimedia Specialty <span class="req">*</span></label>
+            <select id="preferred_specialty" name="preferred_specialty">
+              <option value="" disabled selected>Select a specialty</option>
+              <option>Photographer</option>
+              <option>Videographer</option>
+              <option>Graphic Designer</option>
+              <option>Video Editor</option>
+              <option>Writer</option>
+              <option>Social Media Manager</option>
+              <option>Any / Willing to Learn</option>
+            </select>
+            <span class="err"></span>
+          </div>
+
+          <div class="field full" id="field-agree">
+            <div class="checkline">
+              <input type="checkbox" id="agree" name="agree">
+              <label for="agree">I agree to become an active Multimedia Club member.</label>
+            </div>
+            <span class="err"></span>
+          </div>
+
+        </div>
+
+        <div class="submit-row">
+          <button type="submit" class="btn btn-primary" id="submitBtn">Submit Application</button>
+          <span style="font-size:.82rem; color:var(--gray-400);">Fields marked <span class="req">*</span> are required.</span>
+        </div>
+
+        <div class="form-status" id="formStatus" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= FAQ ============================= -->
+<section class="faq section-pad" id="faq">
+  <div class="wrap">
+    <div class="section-head reveal" style="margin:0 auto 48px; text-align:center;">
+      <p class="eyebrow" style="justify-content:center;">FAQ</p>
+      <h2>Good questions.</h2>
+    </div>
+    <div class="faq-list">
+
+      <div class="faq-item reveal">
+        <button class="faq-q">Do I need experience? <span class="plus">+</span></button>
+        <div class="faq-a"><p>No. Most members start with zero experience — we teach photography, editing, and design from the basics up.</p></div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-q">Is joining free? <span class="plus">+</span></button>
+        <div class="faq-a"><p>Yes, joining the Multimedia Club is completely free.</p></div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-q">Can beginners join? <span class="plus">+</span></button>
+        <div class="faq-a"><p>Absolutely — the club is built for beginners and experienced students alike, all learning and creating together.</p></div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-q">How often are meetings? <span class="plus">+</span></button>
+        <div class="faq-a"><p>Regular meetings are held throughout the month, with additional call-outs whenever a school event needs coverage.</p></div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-q">Can I choose more than one specialty? <span class="plus">+</span></button>
+        <div class="faq-a"><p>Pick one preferred specialty on the form to start, but members are welcome to explore other crafts once they're in the club.</p></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================= CONTACT ============================= -->
+<section class="contact section-pad" id="contact">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow on-dark">Contact</p>
+      <h2>Get in touch.</h2>
+    </div>
+    <div class="contact-grid">
+      <div class="contact-card reveal">
+        <div class="ico"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>
+        <h4>Club Email</h4>
+        <p>mmc.mshs@gmail.com</p>
+      </div>
+      <div class="contact-card reveal">
+        <div class="ico"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a3 3 0 1 0-2.98-3.35"/><path d="M8 12l7.5-4.5"/><circle cx="6" cy="12" r="3"/><path d="M8 13.5L15.5 18"/><circle cx="18" cy="19" r="3"/></svg></div>
+        <h4>Facebook Page</h4>
+        <p>facebook.com/mshsmultimediaclub</p>
+      </div>
+      <div class="contact-card reveal">
+        <div class="ico"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>
+        <h4>Adviser</h4>
+        <p>Ma'am/Sir — Club Adviser</p>
+      </div>
+      <div class="contact-card reveal">
+        <div class="ico"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9l8-5 8 5v12"/><path d="M9 21v-6h6v6"/></svg></div>
+        <h4>School</h4>
+        <p>MSHS — Main Senior High School</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= FOOTER ============================= -->
+<footer>
+  <div class="wrap footer-row">
+    <span class="foot-brand">MSHS Multimedia Club — Join Portal</span>
+    <span>© <span id="year"></span> MSHS Multimedia Club · School Year 2026&ndash;2027</span>
+    <a href="#" id="privacyLink">Privacy Notice</a>
+  </div>
+</footer>
+
+<script>
+/* =========================================================
+   SUPABASE CONFIG
+   Replace these two values with your own project's URL and
+   anon (public) key — find them in your Supabase project at
+   Project Settings → API.
+   ========================================================= */
+const SUPABASE_URL = "https://gxvqwgkigozdxfvpzsjm.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd4dnF3Z2tpZ296ZHhmdnB6c2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNjYzOTQsImV4cCI6MjA5ODk0MjM5NH0.d8QQW51LvVSHF-Pk-IzLq-8IM4qCPy_M4YLeNM-4wWw";
+
+/* This must be the SAME Supabase project used by your main club
+   website, so accounts created here can log in over there.
+   Point this at the main site's login page. */
+const MAIN_SITE_LOGIN_URL = "https://kaitoren873.github.io/Multimedia-clubV1/";
+
+const isSupabaseConfigured = SUPABASE_URL.startsWith("http") && !SUPABASE_ANON_KEY.startsWith("YOUR_");
+
+let supabaseClient = null;
+if(isSupabaseConfigured){
+  try{
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch(err){
+    console.error('Failed to initialize Supabase client:', err);
+  }
+} else {
+  console.warn('Supabase is not configured yet: replace SUPABASE_URL and SUPABASE_ANON_KEY in index.html.');
+}
+
+/* ---------- Year ---------- */
+document.getElementById('year').textContent = new Date().getFullYear();
+
+/* ---------- Member login links → main site ---------- */
+['memberLoginLink', 'memberLoginLinkMobile'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.href = MAIN_SITE_LOGIN_URL;
+});
+
+/* ---------- Mobile menu ---------- */
+const burgerBtn = document.getElementById('burgerBtn');
+const mobileMenu = document.getElementById('mobileMenu');
+burgerBtn.addEventListener('click', () => mobileMenu.classList.toggle('open'));
+mobileMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => mobileMenu.classList.remove('open')));
+
+/* ---------- Scroll reveal ---------- */
+const revealEls = document.querySelectorAll('.reveal');
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if(e.isIntersecting){
+      e.target.classList.add('is-visible');
+      io.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12 });
+revealEls.forEach(el => io.observe(el));
+
+/* ---------- FAQ accordion ---------- */
+document.querySelectorAll('.faq-item').forEach(item => {
+  const q = item.querySelector('.faq-q');
+  const a = item.querySelector('.faq-a');
+  q.addEventListener('click', () => {
+    const isOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item.open').forEach(other => {
+      other.classList.remove('open');
+      other.querySelector('.faq-a').style.maxHeight = null;
+    });
+    if(!isOpen){
+      item.classList.add('open');
+      a.style.maxHeight = a.scrollHeight + 'px';
+    }
+  });
+});
+
+/* ---------- Privacy notice ---------- */
+document.getElementById('privacyLink').addEventListener('click', (e) => {
+  e.preventDefault();
+  alert('Privacy Notice: Information submitted through this form is collected solely to process your MSHS Multimedia Club membership application. It is accessible only to club officers and the adviser, and will not be shared with third parties.');
+});
+
+/* ---------- Registration form ---------- */
+const form = document.getElementById('applicationForm');
+const submitBtn = document.getElementById('submitBtn');
+const formStatus = document.getElementById('formStatus');
+
+const SPECIALTIES = [
+  'Photographer','Videographer','Graphic Designer','Video Editor',
+  'Writer','Social Media Manager','Any / Willing to Learn'
+];
+
+function setFieldError(fieldId, message){
+  const wrap = document.getElementById('field-' + fieldId);
+  if(!wrap) return;
+  wrap.classList.toggle('has-error', !!message);
+  const err = wrap.querySelector('.err');
+  if(err) err.textContent = message || '';
+}
+
+function clearAllErrors(){
+  ['full_name','student_id','grade_level','section','email','password','confirm_password','preferred_specialty','agree'].forEach(f => setFieldError(f, ''));
+}
+
+function validateForm(data){
+  let valid = true;
+
+  if(!data.full_name){ setFieldError('full_name', 'Please enter your full name.'); valid = false; }
+  if(!data.student_id){ setFieldError('student_id', 'Please enter your student ID.'); valid = false; }
+  if(!data.grade_level){ setFieldError('grade_level', 'Please select your grade level.'); valid = false; }
+  if(!data.section){ setFieldError('section', 'Please enter your section.'); valid = false; }
+
+  if(!data.email){
+    setFieldError('email', 'Please enter your email address.'); valid = false;
+  } else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)){
+    setFieldError('email', 'Please enter a valid email address.'); valid = false;
+  }
+
+  if(!data.password){
+    setFieldError('password', 'Please create a password.'); valid = false;
+  } else if(data.password.length < 8){
+    setFieldError('password', 'Password must be at least 8 characters.'); valid = false;
+  }
+
+  if(!data.confirm_password){
+    setFieldError('confirm_password', 'Please confirm your password.'); valid = false;
+  } else if(data.password && data.confirm_password !== data.password){
+    setFieldError('confirm_password', 'Passwords do not match.'); valid = false;
+  }
+
+  if(!data.preferred_specialty || !SPECIALTIES.includes(data.preferred_specialty)){
+    setFieldError('preferred_specialty', 'Please select a specialty.'); valid = false;
+  }
+
+  if(!data.agree){
+    setFieldError('agree', 'You must agree to become an active member to submit.'); valid = false;
+  }
+
+  return valid;
+}
+
+function showStatus(type, message, html){
+  formStatus.className = 'form-status show ' + type;
+  if(html){
+    formStatus.innerHTML = '';
+    const p = document.createElement('div');
+    p.textContent = message;
+    formStatus.appendChild(p);
+    formStatus.insertAdjacentHTML('beforeend', html);
+  } else {
+    formStatus.textContent = message;
+  }
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearAllErrors();
+  formStatus.className = 'form-status';
+  formStatus.textContent = '';
+
+  const data = {
+    full_name: form.full_name.value.trim(),
+    student_id: form.student_id.value.trim(),
+    grade_level: form.grade_level.value,
+    section: form.section.value.trim(),
+    email: form.email.value.trim(),
+    password: form.password.value,
+    confirm_password: form.confirm_password.value,
+    contact_number: form.contact_number.value.trim(),
+    preferred_specialty: form.preferred_specialty.value,
+    agree: form.agree.checked
+  };
+
+  if(!validateForm(data)){
+    showStatus('error', 'Please fix the highlighted fields and try again.');
+    return;
+  }
+
+  if(!supabaseClient){
+    showStatus('error', "This form isn't connected to Supabase yet. Add your SUPABASE_URL and SUPABASE_ANON_KEY in index.html to enable submissions.");
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting…';
+
+  const loginButton = `<a class="status-action" href="${MAIN_SITE_LOGIN_URL}">Go to Member Login →</a>`;
+
+  try{
+    // Step 1: create the member's login account (shared Supabase project
+    // with the main club website, so this account logs in there too).
+    const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+      email: data.email,
+      password: data.password,
+      // key must be "name" (not "full_name") — this is what the main
+      // site's handle_new_user() trigger actually reads to fill in
+      // profiles.name. Using the wrong key silently falls back to
+      // the email's local-part instead of the real name.
+      options: { data: { name: data.full_name } }
+    });
+
+    if(signUpError){
+      if(/already registered|already exists/i.test(signUpError.message)){
+        setFieldError('email', 'This email is already registered.');
+        showStatus('error', "That email already has an account. If it's yours, log in on the main site below — otherwise contact an officer.", loginButton);
+        return;
+      }
+      throw signUpError;
+    }
+
+    // Step 2: record the application, linked to the new account when available.
+    const { error: insertError } = await supabaseClient
+      .from('applications')
+      .insert([{
+        full_name: data.full_name,
+        student_id: data.student_id,
+        grade_level: data.grade_level,
+        section: data.section,
+        email: data.email,
+        contact_number: data.contact_number || null,
+        preferred_specialty: data.preferred_specialty,
+        status: 'Pending',
+        user_id: signUpData?.user?.id || null
+      }]);
+
+    if(insertError) throw insertError;
+
+    const needsConfirmation = signUpData?.user && !signUpData?.session;
+    const confirmNote = needsConfirmation
+      ? " Check your email to confirm your account before logging in."
+      : "";
+
+    showStatus(
+      'success',
+      "Thank you for registering! Your application has been received and your member account has been created." + confirmNote + " The Multimedia Club officers will review your submission and contact you if needed.",
+      loginButton
+    );
+    form.reset();
+  } catch(err){
+    console.error('Supabase registration error:', err);
+    showStatus('error', "Something went wrong while submitting your application. Please check your connection and try again, or reach out to the club through the Contact section below.");
+  } finally{
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit Application';
+  }
+});
+</script>
+</body>
+</html>

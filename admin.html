@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — MSHS Multimedia Club</title>
+<meta name="robots" content="noindex, nofollow">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+  --ink:        #0b0b0c;
+  --ink-soft:   #17171a;
+  --yellow:     #ffd400;
+  --yellow-dim: #d8b400;
+  --white:      #ffffff;
+  --paper:      #f6f5f1;
+  --gray-700:   #4a4a4f;
+  --gray-400:   #8a8a8f;
+  --gray-200:   #d8d8d4;
+  --gray-100:   #ececea;
+  --ease:       cubic-bezier(.16,.84,.44,1);
+  --display:    'Space Grotesk', sans-serif;
+  --body:       'Inter', sans-serif;
+  --mono:       'JetBrains Mono', monospace;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{
+  font-family:var(--body); background:var(--paper); color:var(--ink);
+  line-height:1.5; -webkit-font-smoothing:antialiased; min-height:100vh;
+}
+h1,h2,h3{ font-family:var(--display); letter-spacing:-0.01em; }
+button{ font-family:inherit; cursor:pointer; }
+input,select{ font-family:inherit; }
+a{ color:inherit; }
+
+.hidden{ display:none !important; }
+
+/* ---------- Login screen ---------- */
+.login-screen{
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:var(--ink); padding:24px; position:relative; overflow:hidden;
+}
+.login-screen::before{
+  content:""; position:absolute; width:420px; height:420px; border-radius:50%;
+  background:rgba(255,212,0,.18); filter:blur(100px); top:-140px; right:-100px;
+}
+.login-card{
+  position:relative; z-index:1; width:100%; max-width:400px;
+  background:var(--ink-soft); border:1px solid rgba(255,212,0,.2); border-radius:20px;
+  padding:38px 32px; color:var(--white);
+}
+.login-card .mark{
+  width:44px; height:44px; border-radius:12px; background:var(--yellow); color:var(--ink);
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-family:var(--display);
+  transform:rotate(-6deg); margin-bottom:18px;
+}
+.login-card .eyebrow{
+  font-family:var(--mono); font-size:.7rem; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--yellow); margin-bottom:8px;
+}
+.login-card h1{ font-size:1.5rem; margin-bottom:6px; }
+.login-card p.sub{ color:var(--gray-400); font-size:.9rem; margin-bottom:26px; }
+
+.field{ display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+.field label{ font-size:.82rem; color:var(--gray-200); font-weight:500; }
+.field input, .field select{
+  background:#0f0f11; border:1px solid rgba(255,255,255,.16); border-radius:10px;
+  padding:12px 14px; color:var(--white); font-size:.95rem;
+  transition:border-color .25s, box-shadow .25s;
+}
+.field input:focus, .field select:focus{
+  outline:none; border-color:var(--yellow); box-shadow:0 0 0 3px rgba(255,212,0,.15);
+}
+
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:13px 24px; border-radius:100px; font-weight:600; font-size:.92rem;
+  border:2px solid transparent; transition:transform .3s var(--ease), box-shadow .3s var(--ease), opacity .2s;
+}
+.btn-primary{ background:var(--yellow); color:var(--ink); width:100%; }
+.btn-primary:hover{ transform:translateY(-2px); box-shadow:0 12px 26px -10px rgba(255,212,0,.5); }
+.btn-primary:disabled{ opacity:.55; cursor:not-allowed; transform:none; box-shadow:none; }
+.btn-outline{ background:transparent; border-color:rgba(255,255,255,.25); color:var(--white); }
+.btn-outline:hover{ border-color:var(--yellow); color:var(--yellow); }
+.btn-small{ padding:8px 16px; font-size:.8rem; }
+
+.login-msg{
+  margin-top:16px; padding:12px 14px; border-radius:10px; font-size:.85rem; display:none;
+}
+.login-msg.show{ display:block; }
+.login-msg.error{ background:rgba(255,92,92,.12); border:1px solid rgba(255,92,92,.35); color:#ff8b8b; }
+.login-msg.info{ background:rgba(255,212,0,.1); border:1px solid rgba(255,212,0,.3); color:var(--yellow); }
+
+.back-link{
+  display:block; text-align:center; margin-top:18px; font-size:.82rem; color:var(--gray-400);
+}
+.back-link:hover{ color:var(--yellow); }
+
+/* ---------- Dashboard shell ---------- */
+.dash{ min-height:100vh; display:none; flex-direction:column; }
+.dash.show{ display:flex; }
+
+.topbar{
+  background:var(--ink); color:var(--white); padding:16px 24px;
+  display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.topbar .brand{ display:flex; align-items:center; gap:10px; font-family:var(--display); font-weight:700; }
+.topbar .brand .mark{
+  width:34px; height:34px; border-radius:9px; background:var(--yellow); color:var(--ink);
+  display:flex; align-items:center; justify-content:center; font-size:1rem; font-weight:700; transform:rotate(-6deg);
+}
+.topbar .who{ font-family:var(--mono); font-size:.78rem; color:var(--gray-400); }
+.topbar-right{ display:flex; align-items:center; gap:14px; }
+
+.dash-main{ flex:1; padding:28px 24px 60px; max-width:1320px; margin:0 auto; width:100%; }
+
+.stats-row{ display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:26px; }
+@media(max-width:900px){ .stats-row{ grid-template-columns:repeat(2,1fr); } }
+@media(max-width:520px){ .stats-row{ grid-template-columns:1fr 1fr; } }
+.stat-card{
+  background:var(--white); border:1px solid var(--gray-200); border-radius:14px; padding:18px 20px;
+}
+.stat-card .num{ font-family:var(--display); font-size:1.7rem; font-weight:700; }
+.stat-card .label{ font-family:var(--mono); font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; color:var(--gray-400); margin-top:4px; }
+.stat-card.accent .num{ color:var(--yellow-dim); }
+
+.controls{
+  background:var(--white); border:1px solid var(--gray-200); border-radius:14px; padding:16px 18px;
+  display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:20px;
+}
+.controls input[type="search"]{
+  flex:1 1 220px; padding:11px 14px; border-radius:10px; border:1px solid var(--gray-200); font-size:.9rem;
+}
+.controls select{
+  padding:11px 14px; border-radius:10px; border:1px solid var(--gray-200); font-size:.85rem; background:var(--white);
+}
+.controls input:focus, .controls select:focus{ outline:none; border-color:var(--yellow-dim); }
+.controls .count{ font-family:var(--mono); font-size:.78rem; color:var(--gray-400); margin-left:auto; }
+
+.table-wrap{
+  background:var(--white); border:1px solid var(--gray-200); border-radius:14px; overflow:auto;
+}
+table{ width:100%; border-collapse:collapse; min-width:920px; }
+thead th{
+  text-align:left; font-family:var(--mono); font-size:.68rem; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--gray-400); padding:14px 16px; border-bottom:1px solid var(--gray-200); white-space:nowrap;
+}
+tbody td{ padding:14px 16px; border-bottom:1px solid var(--gray-100); font-size:.88rem; vertical-align:middle; }
+tbody tr:last-child td{ border-bottom:none; }
+tbody tr:hover{ background:#fbfaf6; }
+.cell-name{ font-weight:600; }
+.cell-sub{ color:var(--gray-400); font-size:.78rem; }
+
+.status-select{
+  padding:7px 12px; border-radius:100px; font-size:.78rem; font-weight:600; border:1px solid var(--gray-200);
+  background:var(--gray-100); cursor:pointer;
+}
+.status-select.Pending{ background:#fff4cf; border-color:#e8cf7a; color:#7a5e00; }
+.status-select.Reviewed{ background:#e4ecff; border-color:#a9c0f5; color:#233f8a; }
+.status-select.Approved{ background:#dff5e3; border-color:#a3e0b1; color:#1a6b30; }
+.status-select.Declined{ background:#fde2e2; border-color:#f2a6a6; color:#8f2323; }
+
+.icon-btn{
+  background:none; border:1px solid var(--gray-200); border-radius:8px; padding:6px 9px; color:var(--gray-700);
+  transition:border-color .2s, color .2s;
+}
+.icon-btn:hover{ border-color:#e04747; color:#e04747; }
+
+.empty-state{ padding:60px 20px; text-align:center; color:var(--gray-400); }
+.loading-state{ padding:60px 20px; text-align:center; color:var(--gray-400); font-family:var(--mono); font-size:.85rem; }
+
+.toast{
+  position:fixed; bottom:24px; right:24px; z-index:400; background:var(--ink); color:var(--white);
+  padding:14px 20px; border-radius:12px; font-size:.86rem; box-shadow:0 20px 40px -14px rgba(0,0,0,.4);
+  border:1px solid rgba(255,212,0,.3); display:flex; align-items:center; gap:10px;
+  opacity:0; transform:translateY(12px); transition:opacity .3s var(--ease), transform .3s var(--ease); pointer-events:none;
+}
+.toast.show{ opacity:1; transform:translateY(0); }
+.toast.error{ border-color:rgba(255,92,92,.4); }
+</style>
+</head>
+<body>
+
+<!-- ============================= LOGIN ============================= -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="mark">M</div>
+    <p class="eyebrow">Officers only</p>
+    <h1>Admin Dashboard</h1>
+    <p class="sub">Sign in with your club officer account to review and manage applications.</p>
+
+    <form id="loginForm" novalidate>
+      <div class="field">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" placeholder="officer@example.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary" id="loginBtn">Sign In</button>
+    </form>
+
+    <div class="login-msg" id="loginMsg"></div>
+    <a href="index.html" class="back-link">← Back to Join Portal</a>
+  </div>
+</div>
+
+<!-- ============================= DASHBOARD ============================= -->
+<div class="dash" id="dashScreen">
+  <div class="topbar">
+    <div class="brand"><span class="mark">M</span><span>Applications Dashboard</span></div>
+    <div class="topbar-right">
+      <span class="who" id="whoLabel"></span>
+      <button class="btn btn-outline btn-small" id="signOutBtn">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="dash-main">
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card"><div class="num" id="statTotal">0</div><div class="label">Total</div></div>
+      <div class="stat-card"><div class="num" id="statPending">0</div><div class="label">Pending</div></div>
+      <div class="stat-card"><div class="num" id="statReviewed">0</div><div class="label">Reviewed</div></div>
+      <div class="stat-card accent"><div class="num" id="statApproved">0</div><div class="label">Approved</div></div>
+      <div class="stat-card"><div class="num" id="statDeclined">0</div><div class="label">Declined</div></div>
+    </div>
+
+    <div class="controls">
+      <input type="search" id="searchInput" placeholder="Search name, student ID, or email…">
+      <select id="statusFilter">
+        <option value="">All statuses</option>
+        <option>Pending</option><option>Reviewed</option><option>Approved</option><option>Declined</option>
+      </select>
+      <select id="specialtyFilter">
+        <option value="">All specialties</option>
+        <option>Photographer</option><option>Videographer</option><option>Graphic Designer</option>
+        <option>Video Editor</option><option>Writer</option><option>Social Media Manager</option>
+        <option>Any / Willing to Learn</option>
+      </select>
+      <select id="gradeFilter">
+        <option value="">All grades</option>
+        <option>Grade 7</option><option>Grade 8</option><option>Grade 9</option>
+        <option>Grade 10</option><option>Grade 11</option><option>Grade 12</option>
+      </select>
+      <button class="btn btn-outline btn-small" id="refreshBtn">Refresh</button>
+      <span class="count" id="resultCount"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table id="appsTable">
+        <thead>
+          <tr>
+            <th>Applicant</th>
+            <th>Grade &amp; Section</th>
+            <th>Email</th>
+            <th>Contact</th>
+            <th>Specialty</th>
+            <th>Status</th>
+            <th>Submitted</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="appsTbody">
+          <tr><td colspan="8"><div class="loading-state">Loading applications…</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   SUPABASE CONFIG — must match index.html exactly, since both
+   pages need to point at the SAME Supabase project.
+   ========================================================= */
+const SUPABASE_URL = "https://gxvqwgkigozdxfvpzsjm.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd4dnF3Z2tpZ296ZHhmdnB6c2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNjYzOTQsImV4cCI6MjA5ODk0MjM5NH0.d8QQW51LvVSHF-Pk-IzLq-8IM4qCPy_M4YLeNM-4wWw";
+
+const isSupabaseConfigured = SUPABASE_URL.startsWith("http") && !SUPABASE_ANON_KEY.startsWith("YOUR_");
+let supabaseClient = null;
+if(isSupabaseConfigured){
+  try{ supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }
+  catch(err){ console.error('Failed to initialize Supabase client:', err); }
+}
+
+const loginScreen = document.getElementById('loginScreen');
+const dashScreen = document.getElementById('dashScreen');
+const loginForm = document.getElementById('loginForm');
+const loginBtn = document.getElementById('loginBtn');
+const loginMsg = document.getElementById('loginMsg');
+const whoLabel = document.getElementById('whoLabel');
+const toast = document.getElementById('toast');
+
+let allApplications = [];
+let currentUserEmail = '';
+
+function showLoginMsg(type, message){
+  loginMsg.className = 'login-msg show ' + type;
+  loginMsg.textContent = message;
+}
+function clearLoginMsg(){
+  loginMsg.className = 'login-msg';
+  loginMsg.textContent = '';
+}
+function showToast(message, isError){
+  toast.textContent = message;
+  toast.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), 3200);
+}
+
+/* ---------- Auth gate ---------- */
+async function checkSessionAndRoute(){
+  if(!supabaseClient){
+    showLoginMsg('error', "This dashboard isn't connected to Supabase yet. Add your SUPABASE_URL and SUPABASE_ANON_KEY in admin.html.");
+    return;
+  }
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if(session?.user){
+    await enterDashboardIfAdmin(session.user);
+  }
+}
+
+async function enterDashboardIfAdmin(user){
+  const { data: profile, error } = await supabaseClient
+    .from('profiles')
+    .select('account_type, name, email, suspended')
+    .eq('id', user.id)
+    .single();
+
+  if(error || !profile){
+    showLoginMsg('error', "Couldn't verify your account. Please try signing in again.");
+    await supabaseClient.auth.signOut();
+    return;
+  }
+
+  if(profile.account_type !== 'administrator' || profile.suspended){
+    showLoginMsg('error', "This account doesn't have admin access. Contact the club adviser if you believe this is a mistake.");
+    await supabaseClient.auth.signOut();
+    return;
+  }
+
+  currentUserEmail = profile.email || user.email;
+  whoLabel.textContent = (profile.name || currentUserEmail) + ' · admin';
+  loginScreen.classList.add('hidden');
+  dashScreen.classList.add('show');
+  loadApplications();
+}
+
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearLoginMsg();
+
+  if(!supabaseClient){
+    showLoginMsg('error', "This dashboard isn't connected to Supabase yet. Add your SUPABASE_URL and SUPABASE_ANON_KEY in admin.html.");
+    return;
+  }
+
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  if(!email || !password){
+    showLoginMsg('error', 'Please enter both email and password.');
+    return;
+  }
+
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Signing in…';
+
+  try{
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if(error) throw error;
+    await enterDashboardIfAdmin(data.user);
+  } catch(err){
+    console.error('Sign-in error:', err);
+    showLoginMsg('error', 'Incorrect email or password, or this account is not confirmed yet.');
+  } finally{
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Sign In';
+  }
+});
+
+document.getElementById('signOutBtn').addEventListener('click', async () => {
+  await supabaseClient.auth.signOut();
+  dashScreen.classList.remove('show');
+  loginScreen.classList.remove('hidden');
+  loginForm.reset();
+  allApplications = [];
+});
+
+/* ---------- Load + render applications ---------- */
+async function loadApplications(){
+  const tbody = document.getElementById('appsTbody');
+  tbody.innerHTML = '<tr><td colspan="8"><div class="loading-state">Loading applications…</div></td></tr>';
+
+  const { data, error } = await supabaseClient
+    .from('applications')
+    .select('*')
+    .order('submitted_at', { ascending: false });
+
+  if(error){
+    console.error('Load applications error:', error);
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">Couldn\'t load applications. Try refreshing.</div></td></tr>';
+    return;
+  }
+
+  allApplications = data || [];
+  renderStats();
+  applyFiltersAndRender();
+}
+
+function renderStats(){
+  const counts = { Pending:0, Reviewed:0, Approved:0, Declined:0 };
+  allApplications.forEach(a => { if(counts[a.status] !== undefined) counts[a.status]++; });
+  document.getElementById('statTotal').textContent = allApplications.length;
+  document.getElementById('statPending').textContent = counts.Pending;
+  document.getElementById('statReviewed').textContent = counts.Reviewed;
+  document.getElementById('statApproved').textContent = counts.Approved;
+  document.getElementById('statDeclined').textContent = counts.Declined;
+}
+
+function applyFiltersAndRender(){
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const statusF = document.getElementById('statusFilter').value;
+  const specialtyF = document.getElementById('specialtyFilter').value;
+  const gradeF = document.getElementById('gradeFilter').value;
+
+  let rows = allApplications.filter(a => {
+    if(statusF && a.status !== statusF) return false;
+    if(specialtyF && a.preferred_specialty !== specialtyF) return false;
+    if(gradeF && a.grade_level !== gradeF) return false;
+    if(q){
+      const hay = (a.full_name + ' ' + a.student_id + ' ' + a.email).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('resultCount').textContent = rows.length + ' of ' + allApplications.length;
+  renderTable(rows);
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
+function renderTable(rows){
+  const tbody = document.getElementById('appsTbody');
+
+  if(rows.length === 0){
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">No applications match your filters.</div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(a => {
+    const submitted = a.submitted_at ? new Date(a.submitted_at).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' }) : '—';
+    return `
+      <tr data-id="${a.id}">
+        <td>
+          <div class="cell-name">${escapeHtml(a.full_name)}</div>
+          <div class="cell-sub">${escapeHtml(a.student_id)}</div>
+        </td>
+        <td>${escapeHtml(a.grade_level)}<div class="cell-sub">${escapeHtml(a.section)}</div></td>
+        <td>${escapeHtml(a.email)}</td>
+        <td>${escapeHtml(a.contact_number) || '—'}</td>
+        <td>${escapeHtml(a.preferred_specialty)}</td>
+        <td>
+          <select class="status-select ${a.status}" data-id="${a.id}">
+            ${['Pending','Reviewed','Approved','Declined'].map(s => `<option value="${s}" ${s === a.status ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </td>
+        <td>${submitted}</td>
+        <td><button class="icon-btn" data-delete="${a.id}" title="Delete application">✕</button></td>
+      </tr>`;
+  }).join('');
+
+  tbody.querySelectorAll('.status-select').forEach(sel => {
+    sel.addEventListener('change', () => updateStatus(sel.dataset.id, sel.value, sel));
+  });
+  tbody.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', () => deleteApplication(btn.dataset.delete));
+  });
+}
+
+async function updateStatus(id, newStatus, selectEl){
+  selectEl.disabled = true;
+  const { error } = await supabaseClient
+    .from('applications')
+    .update({ status: newStatus })
+    .eq('id', id);
+
+  selectEl.disabled = false;
+
+  if(error){
+    console.error('Status update error:', error);
+    showToast('Could not update status. Please try again.', true);
+    return;
+  }
+
+  const app = allApplications.find(a => a.id === id);
+  if(app) app.status = newStatus;
+  selectEl.className = 'status-select ' + newStatus;
+  renderStats();
+  showToast(`Marked ${app ? app.full_name : 'application'} as ${newStatus}.`);
+}
+
+async function deleteApplication(id){
+  const app = allApplications.find(a => a.id === id);
+  const ok = confirm(`Delete the application from ${app ? app.full_name : 'this student'}? This cannot be undone.`);
+  if(!ok) return;
+
+  const { error } = await supabaseClient.from('applications').delete().eq('id', id);
+  if(error){
+    console.error('Delete error:', error);
+    showToast('Could not delete application. Please try again.', true);
+    return;
+  }
+
+  allApplications = allApplications.filter(a => a.id !== id);
+  renderStats();
+  applyFiltersAndRender();
+  showToast('Application deleted.');
+}
+
+['searchInput','statusFilter','specialtyFilter','gradeFilter'].forEach(id => {
+  document.getElementById(id).addEventListener('input', applyFiltersAndRender);
+  document.getElementById(id).addEventListener('change', applyFiltersAndRender);
+});
+document.getElementById('refreshBtn').addEventListener('click', loadApplications);
+
+checkSessionAndRoute();
+</script>
+</body>
+</html>

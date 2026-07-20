@@ -308,20 +308,6 @@ select.input{ cursor:pointer; }
 .news-card h3{ font-size:15.5px; margin-bottom:6px; }
 .news-card p{ font-size:12.5px; color:var(--text-1); }
 
-/* ============ MEDIA / COLLABORATIONS ============ */
-.media-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:18px; }
-.media-card{ padding:14px; display:flex; flex-direction:column; gap:10px; }
-.media-thumb{
-  width:100%; aspect-ratio:4/3; border-radius:12px; overflow:hidden; background:var(--panel-hi);
-  display:flex; align-items:center; justify-content:center;
-}
-.media-thumb img, .media-thumb video{ width:100%; height:100%; object-fit:cover; display:block; }
-.media-caption{ font-size:13px; color:var(--text-1); line-height:1.5; }
-.media-meta{ display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--text-2); font-family:var(--font-mono); }
-.media-linked{ font-size:11px; color:var(--text-2); }
-.media-linked a{ color:var(--cyan); }
-.media-card .mini-btn{ align-self:flex-start; }
-
 /* ============ DASHBOARD ============ */
 .dash-grid{ display:grid; grid-template-columns:2fr 1fr; gap:20px; }
 .widget{ padding:22px; }
@@ -682,13 +668,12 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
 
 <!-- NAV -->
 <nav class="nav glass" style="margin-top:34px;">
-  <a href="#home" class="brand"><span class="brand-mark"><img src="assets/club-logo.svg" alt="Multimedia Club logo" /></span> Multimedia</a>
+  <a href="Member_Recruitment.html" class="brand"><span class="brand-mark"><img src="assets/club-logo.svg" alt="Multimedia Club logo" /></span> Multimedia</a>
   <div class="nav-links">
     <a href="#home">Home</a>
     <a href="#announcements">Announcements</a>
     <a href="#events">Events</a>
     <a href="#news">News</a>
-    <a href="#collaborations">Collaborations</a>
     <a href="#dashboard" id="navDashboardLink" class="hidden">Dashboard</a>
     <a href="#admin" id="navAdminLink" class="hidden">Admin</a>
   </div>
@@ -793,68 +778,6 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
   </div>
 </section>
 
-<!-- COLLABORATIONS — club partnerships + member-uploaded photos/videos -->
-<section class="section" id="collaborations">
-  <div class="container">
-    <div class="section-head">
-      <div>
-        <div class="eyebrow">Collaborations</div>
-        <h2>Working with other clubs</h2>
-      </div>
-    </div>
-    <div class="ann-grid" id="collabGrid" style="margin-bottom:36px;"></div>
-
-    <div class="section-head">
-      <div>
-        <div class="eyebrow">Shared media</div>
-        <h2>Photos &amp; videos from members</h2>
-      </div>
-      <div class="section-tools" id="mediaFilterChips"></div>
-    </div>
-
-    <div id="mediaUploadWrap" class="widget glass hidden" style="margin-bottom:22px;">
-      <h3>Share a photo or video</h3>
-      <div class="form-msg" id="mediaMsg"></div>
-      <form id="mediaUploadForm" onsubmit="handleMediaUpload(event)" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end;">
-        <div class="field" style="margin-bottom:0;">
-          <label>What's this for?</label>
-          <select class="input" style="width:100%;" id="mediaCategoryInput" onchange="onMediaCategoryChange()">
-            <option value="collaboration">A collaboration</option>
-            <option value="event">An event</option>
-            <option value="announcement">An announcement</option>
-          </select>
-        </div>
-        <div class="field hidden" id="mediaEventPickWrap" style="margin-bottom:0;">
-          <label>Which event?</label>
-          <select class="input" style="width:100%;" id="mediaEventInput"></select>
-        </div>
-        <div class="field hidden" id="mediaAnnPickWrap" style="margin-bottom:0;">
-          <label>Which announcement?</label>
-          <select class="input" style="width:100%;" id="mediaAnnInput"></select>
-        </div>
-        <div class="field" id="mediaCollabPickWrap" style="margin-bottom:0;">
-          <label>Which collaboration?</label>
-          <select class="input" style="width:100%;" id="mediaCollabInput"></select>
-        </div>
-        <div class="field" style="grid-column:1/-1;margin-bottom:0;">
-          <label>Caption (optional)</label>
-          <input class="input" style="width:100%;" id="mediaCaptionInput" placeholder="Say something about it…" />
-        </div>
-        <div class="field" style="grid-column:1/-1;margin-bottom:0;">
-          <label>Photo or video file</label>
-          <input type="file" id="mediaFileInput" accept="image/*,video/*" required style="width:100%;color:var(--text-1);" />
-        </div>
-        <button type="submit" class="btn primary" style="grid-column:1/-1;" id="mediaSubmitBtn">Upload</button>
-      </form>
-    </div>
-    <div id="mediaLoginPrompt" class="widget glass" style="margin-bottom:22px;text-align:center;color:var(--text-1);font-size:13.5px;">
-      Log in as a member to share your own photos and videos here.
-    </div>
-
-    <div class="media-grid" id="mediaGrid"></div>
-  </div>
-</section>
-
 <!-- STUDENT DASHBOARD (visible after login) -->
 <section class="section hidden" id="dashboard">
   <div class="container">
@@ -901,10 +824,9 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
 
     <div class="widget glass" style="margin-bottom:20px;">
       <h3>Publish content</h3>
-      <div class="modal-tabs" style="max-width:420px;margin-bottom:16px;">
+      <div class="modal-tabs" style="max-width:320px;margin-bottom:16px;">
         <button id="publishTabAnn" class="active" onclick="switchPublishTab('announcement')">Announcement</button>
         <button id="publishTabEvent" onclick="switchPublishTab('event')">Event</button>
-        <button id="publishTabCollab" onclick="switchPublishTab('collaboration')">Collaboration</button>
       </div>
       <div class="form-msg" id="publishMsg"></div>
 
@@ -933,14 +855,6 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
         <div class="field" style="margin-bottom:0;"><label>Location</label><input class="input" style="width:100%;" id="evLocationInput" required /></div>
         <div class="field" style="margin-bottom:0;"><label>Description</label><input class="input" style="width:100%;" id="evDescInput" /></div>
         <button type="submit" class="btn primary" style="grid-column:1/-1;">Publish event</button>
-      </form>
-
-      <form id="collabForm" class="hidden" onsubmit="handleCreateCollaboration(event)" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end;">
-        <div class="field" style="margin-bottom:0;"><label>Title</label><input class="input" style="width:100%;" id="collabTitleInput" required /></div>
-        <div class="field" style="margin-bottom:0;"><label>Partner club</label><input class="input" style="width:100%;" id="collabPartnerInput" required /></div>
-        <div class="field" style="grid-column:1/-1;margin-bottom:0;"><label>Description</label><input class="input" style="width:100%;" id="collabDescInput" /></div>
-        <div class="field" style="margin-bottom:0;"><label>Date (optional)</label><input class="input" type="datetime-local" style="width:100%;" id="collabDateInput" /></div>
-        <button type="submit" class="btn primary" style="grid-column:1/-1;">Publish collaboration</button>
       </form>
     </div>
 
