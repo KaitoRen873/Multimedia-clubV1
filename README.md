@@ -1,147 +1,138 @@
-# Multimedia Club — v1 (Supabase-backed)
+# MSHS Multimedia Club — Join Portal
 
-This is a real, working version of the site: real accounts via Supabase
-Auth, a real Postgres database with row-level security, and live
-updates via Supabase Realtime. No mock data, no in-memory arrays that
-reset on refresh.
+A recruitment site for the MSHS Multimedia Club. Registering here **creates a real
+Supabase Auth account** in the **same Supabase project as your main club website** —
+so it isn't a copy or a sync, it's literally the same account and the same `profiles`
+row. Once someone registers here, they can log in on the main site immediately with
+the same email and password, and they'll show up in the main site's member list.
 
-## What this includes
+It also includes an **admin dashboard** (`admin.html`) for officers to review and
+manage applications, using the exact same "administrator" check as your main site.
 
-- **Auth is real.** Sign-up/sign-in go through Supabase Auth. Passwords
-  are hashed and managed by Supabase, not by this code.
-- **Data is real.** Announcements, events, news, member profiles,
-  login history, and admin audit logs all live in Postgres tables
-  defined in `supabase/schema.sql`.
-- **Access control is enforced in the database**, not just hidden in
-  the UI — Row Level Security policies and triggers block privilege
-  escalation and enforce the 2-administrator seat cap even if someone
-  bypasses the frontend entirely.
-- **Two avatar images** are included as original SVG artwork:
-  `assets/solis-avatar.svg` (the AI assistant) and
-  `assets/club-logo.svg` (the club mark, also used as the favicon).
+## ⚠️ Before anything else: point this at your MAIN site's project
 
-## Setup (about 10 minutes)
+This only works if `index.html` and `admin.html` here use the **exact same**
+`SUPABASE_URL` and `SUPABASE_ANON_KEY` as your main club website's `config.js`.
+Right now, check both:
 
-**Keep the whole folder together.** `index.html` on its own will not
-work — it loads `config.js`, `js/app.js`, and the files in `assets/`
-as separate files, exactly like any real website's assets. If you
-only saved `index.html`, go back and grab the rest. As of this
-version, if any of that fails to load, a red banner across the top
-of the page will now tell you exactly what's missing instead of the
-page silently doing nothing.
+- This project's `index.html` / `admin.html`
+- Your main site's `config.js`
 
-1. **Create a Supabase project** at [supabase.com](https://supabase.com)
-   (free tier is enough for v1).
-2. **Run the schema.** Dashboard → SQL Editor → New query → paste the
-   entire contents of `supabase/schema.sql` → Run. This creates every
-   table, security policy, trigger, and the seed announcements/events/
-   news.
-3. **Copy your API keys.** Dashboard → Settings → API. Copy the
-   **Project URL** and the **anon public** key (never the
-   `service_role` key — that one must never reach a browser).
-4. **Paste them into `config.js`** at the project root.
-5. **Serve the files.** Any static host works — this is still plain
-   HTML/CSS/JS with no build step:
-   - Quick local test: `npx serve .` (or any static server) from this
-     folder, then open the printed URL.
-   - Production: deploy the whole folder to Netlify, Vercel, Cloudflare
-     Pages, or GitHub Pages, exactly like a static site.
-6. **Create your first administrator.** New sign-ups always start as a
-   `member` (enforced by a trigger). Sign up once through the site
-   with the account you want to be an admin, then in the SQL Editor:
-   ```sql
-   update public.profiles set account_type = 'administrator'
-   where email = 'you@example.com';
-   ```
-   From then on, promote a second admin from the Admin dashboard or
-   through Solis — the 2-seat cap is enforced by the database either
-   way.
+If the URLs (the `https://xxxxx.supabase.co` part) don't match, these are two
+different databases and nothing here will appear on your main site no matter what
+else is configured correctly. Copy your main site's real values into both
+`index.html` and `admin.html` here, replacing whatever is currently there.
 
-## Hidden access
+## Files
 
-- `↑ ↑ ↑ ↓ → →` — opens the Member Portal (login/join)
-- `↓ ↓ ← ← ↑` — opens the Administrator login
-- `↓ ↓ ↓` — emergency fallback, also opens the Administrator login
+- `index.html` — the public recruitment site + registration form.
+- `admin.html` — officer-only login and applications dashboard.
+- `schema.sql` — adds the `applications` table to your **existing** main-site
+  database. It does *not* recreate `profiles` or its triggers — those already exist
+  from your main site's own schema.sql, and this file is written to build on top of
+  them rather than conflict with them.
+- `netlify.toml` — optional deployment config for Netlify (safe to ignore/delete if
+  you're using GitHub Pages or another host).
 
-These sequences only ever reveal a form. Every credential is still
-checked by Supabase Auth, and every privileged action is still
-re-checked by the database.
+## 1. Set up Supabase
 
-## Honest scope notes for v1
+1. Confirm you're using the **same Supabase project** as your main club website (see
+   the warning above — this is the part that actually makes accounts "permanent" on
+   both sites, since they're the same database).
+2. Open the **SQL Editor** and run all of `schema.sql`. It starts with a safety check
+   that stops immediately with a clear error if `public.profiles` or
+   `public.is_admin()` don't exist yet — that means you're not pointed at the right
+   project, or haven't run your main site's own schema.sql there. Fix that first.
+3. If you ever previously ran an older version of this file against your main site's
+   project, that old version could have overwritten your main site's user-creation
+   trigger with an incompatible one. The last block in the current `schema.sql`
+   restores the correct version regardless — it's safe to run even if you never had
+   the problem.
+4. In **Authentication → Providers**, make sure **Email** sign-up is enabled. Under
+   **Authentication → Settings**, decide whether "Confirm email" is on — if it's on,
+   new members must click a confirmation link before they can log in (the form
+   already tells them this when it applies).
+5. Go to **Project Settings → API** and copy your **Project URL** and **anon public
+   key** — these are the values to paste into both HTML files (see the warning
+   above).
 
-A few things worth knowing before you treat this as fully finished:
+## 2. Connect both pages to Supabase
 
-- **I could not test this against a live Supabase project.** This
-  sandbox has no network access, so I wrote and syntax-checked the
-  code carefully but have not run it end-to-end against a real
-  database. Test the auth flow and admin actions yourself after setup,
-  and open an issue in your own tracking if something doesn't line up
-  — the code is straightforward enough to patch.
-- **Member directory privacy.** The `profiles` table currently lets
-  any logged-in member read every other member's row (needed for the
-  admin panel and directory features). Emails and suspension status
-  are technically visible to any member via a direct API call, even
-  though the UI never displays that to non-admins. If that's too
-  broad for your use case, replace the `profiles_select_authenticated`
-  policy with a public view that excludes sensitive columns for
-  non-admins.
-- **Full account deletion needs one more step.** Browsers can never
-  hold the `service_role` key, so the admin dashboard's "Delete"
-  button removes a member's profile data and blocks their app access,
-  but their underlying Supabase Auth login isn't destroyed until you
-  either remove it from Authentication → Users in the dashboard, or
-  deploy `supabase/functions/delete-user/index.ts` (included, and
-  explained inline).
-- **Failed login attempts aren't persisted.** Only successful logins
-  are written to `login_events`, since logging a failed attempt would
-  need an open insert policy usable by anyone, which is its own abuse
-  surface. Client-side lockout after repeated failures is still in
-  place as a UX layer; Supabase Auth also rate-limits at the API level.
-- **Notifications are real but per-tab.** The bell fires from actual
-  Realtime events (new announcements, new events, event reminders
-  inside 24 hours, your own login, and role/officer changes made to
-  your account) — they're just not stored in a table, so a fresh tab
-  starts with an empty notification list rather than history. Everything
-  else (announcements, events, news, members, logins, audit log, page
-  views) is fully persisted in Postgres.
+In **both** `index.html` and `admin.html`, find:
 
-## File map
-
-```
-index.html                          the site
-config.js                           your Supabase URL + anon key
-js/app.js                           all application logic
-assets/solis-avatar.svg             Solis avatar
-assets/club-logo.svg                club logo / favicon
-supabase/schema.sql                 run this once in SQL Editor on a brand-new project
-supabase/migrations/002_add_media_posts.sql   run this instead if schema.sql was already applied
-supabase/functions/delete-user/     optional edge function for full account deletion
+```js
+const SUPABASE_URL = "...";
+const SUPABASE_ANON_KEY = "...";
 ```
 
-## Member media (photos/videos) + Collaborations
+and make sure both files have **the same values as your main site's `config.js`** —
+not just the same as each other.
 
-Any logged-in, non-suspended member can share a photo or video, tagged
-to an event, an announcement, or a club collaboration. Collaborations
-themselves (title, partner club, description, date) are posted by
-admins from the same "Publish content" panel as announcements/events.
+## 3. Point registration at your main site's login page
 
-- **Brand-new project** — `schema.sql` already includes all of this;
-  just follow Setup above.
-- **Existing project** (you already ran `schema.sql` once before this
-  feature existed) — don't re-run the whole file, it'll fail with
-  "relation already exists." Instead, run
-  `supabase/migrations/002_add_media_posts.sql` once in the SQL
-  Editor — it only adds the new tables/bucket/policies and won't
-  touch anything you already have.
+In `index.html`, find:
 
-A few real constraints worth knowing:
-- Images up to 15MB, videos up to 100MB (enforced both in the browser
-  and on the storage bucket itself, so they can't drift out of sync).
-- Files are stored in a public "media" bucket, under a folder named
-  after each member's user id — that's what stops one member from
-  overwriting or deleting another member's uploads directly in
-  storage, independent of the app's own UI.
-- A member can delete their own upload; an admin can delete anyone's
-  (moderation). Deleting a collaboration/event/announcement doesn't
-  delete media that referenced it — the media just becomes unlinked.
+```js
+const MAIN_SITE_LOGIN_URL = "https://your-main-club-website.example.com/login";
+```
 
+and set it to your main website's actual URL — since your main site's login is a
+hidden keyboard sequence rather than a page, this can just point at your main site's
+homepage; members will use the sequence once they're there.
+
+## 4. Create your first admin (if you haven't already)
+
+New accounts default to `account_type = 'member'` (set by your main site's own
+trigger — this project doesn't touch that). To make an account an admin, this is the
+same step you'd already do on your main site:
+
+```sql
+update public.profiles set account_type = 'administrator'
+where email = 'your-email@example.com';
+```
+
+Do this from the SQL editor only — never expose a way for the public site to grant
+itself admin access. The 2-administrator seat limit from your main site's schema
+still applies here too, since it's the same trigger enforcing it.
+
+## 5. Run it locally
+
+No build step needed — both pages are static files. Open `index.html` or `admin.html`
+directly in a browser, or serve the folder with:
+
+```bash
+npx serve .
+```
+
+## 6. Deploy
+
+**GitHub Pages:** push this folder to a repo, then in **Settings → Pages** set the
+source to your branch/folder. You'll get a URL like
+`https://yourusername.github.io/your-repo-name/` — `admin.html` will be reachable at
+`.../admin.html`. (`netlify.toml` isn't used here — you can leave or delete it.)
+
+**Netlify:** drag the folder into [app.netlify.com/drop](https://app.netlify.com/drop),
+or connect a Git repo. `netlify.toml` is already configured for a no-build static
+deploy.
+
+> `admin.html` isn't linked from the public navigation, but it isn't secret either —
+> anyone can find the URL. That's fine: the real protection is the Supabase login +
+> admin role check, not the URL being hidden.
+
+## How it fits together
+
+- **Join Portal (`index.html`)** — public. Registering calls `supabase.auth.signUp()`
+  to create the member's login (with `name` set in the metadata, which your main
+  site's trigger reads to fill in the member's display name), then inserts a row into
+  `applications` linked to that account. No admin powers here.
+- **Main club website** — the same Supabase project. The account created here *is*
+  a real row in that same `profiles` table the moment it's created — there's no sync
+  step, no export/import, no delay. The member can use the hidden login sequence on
+  the main site right away (once they've confirmed their email, if that's enabled).
+- **Admin Dashboard (`admin.html`)** — officers sign in, the page checks
+  `profiles.account_type === 'administrator'` (and that they're not suspended) —
+  the exact same check your main site uses — and only admins get past the login
+  screen. From there they can search, filter (by status/specialty/grade), update an
+  application's status (Pending/Reviewed/Approved/Declined), or delete an entry.
+  Deleting an application never deletes the member's actual account — those are
+  independent.
