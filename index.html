@@ -20,9 +20,9 @@
   --text-0:#f5f2e8;
   --text-1:#c9c3ac;
   --text-2:#8b8672;
-  --violet:#FFB300;
-  --cyan:#FFD54A;
-  --amber:#FFF176;
+  --gold-deep:#FFB300;
+  --gold:#FFD54A;
+  --gold-pale:#FFF176;
   --rose:#fb7185;
   --green:#34d399;
   --radius:18px;
@@ -76,7 +76,7 @@ h1,h2,h3,h4{ font-family:var(--font-display); letter-spacing:-.01em; }
 a{color:inherit; text-decoration:none;}
 button{ font-family:inherit; }
 img{max-width:100%; display:block;}
-::selection{ background:var(--violet); color:#fff; }
+::selection{ background:var(--gold-deep); color:#fff; }
 .mono{ font-family:var(--font-mono); }
 .container{ max-width:1240px; margin:0 auto; padding:0 28px; }
 .glass{
@@ -89,9 +89,9 @@ img{max-width:100%; display:block;}
 .hidden{ display:none !important; }
 .eyebrow{
   font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--cyan); display:flex; align-items:center; gap:8px;
+  color:var(--gold); display:flex; align-items:center; gap:8px;
 }
-.eyebrow::before{ content:""; width:6px; height:6px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+.eyebrow::before{ content:""; width:6px; height:6px; border-radius:50%; background:var(--gold); box-shadow:0 0 8px var(--gold); }
 
 /* scroll reveal */
 .reveal{ opacity:0; transform:translateY(24px); transition:opacity .7s var(--ease), transform .7s var(--ease); }
@@ -116,11 +116,11 @@ img{max-width:100%; display:block;}
 }
 .btn:hover{ transform:translateY(-2px) scale(1.015); box-shadow:0 10px 30px -8px rgba(255,179,0,.35); border-color:rgba(255,179,0,.5); }
 .btn:active{ transform:translateY(0) scale(.98); }
-.btn:focus-visible{ outline:2px solid var(--cyan); outline-offset:3px; }
+.btn:focus-visible{ outline:2px solid var(--gold); outline-offset:3px; }
 .btn:disabled{ opacity:.4; cursor:not-allowed; filter:grayscale(.4); transform:none; box-shadow:none; }
 .btn::before{
   content:""; position:absolute; inset:0; z-index:-1; opacity:0;
-  background:linear-gradient(120deg, var(--violet), var(--cyan));
+  background:linear-gradient(120deg, var(--gold-deep), var(--gold));
   transition:opacity .35s var(--ease);
 }
 .btn.primary{ border-color:transparent; color:#fff; }
@@ -138,8 +138,24 @@ img{max-width:100%; display:block;}
   background:var(--panel-hi); border:1px solid var(--panel-border); cursor:pointer; position:relative;
   transition:transform .3s var(--ease), border-color .3s var(--ease);
 }
-.icon-btn:hover{ transform:translateY(-2px); border-color:var(--violet); }
-.icon-btn:focus-visible{ outline:2px solid var(--cyan); outline-offset:2px; }
+.icon-btn:hover{ transform:translateY(-2px); border-color:var(--gold-deep); }
+.icon-btn:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+
+/* One consistent keyboard-focus treatment across every remaining
+   interactive element — inputs/selects use a border-color change
+   (already present) plus this outline so it reads clearly against
+   the dark glass panels. */
+.nav-links a:focus-visible,
+.theme-switch:focus-visible,
+.input:focus-visible,
+.chip:focus-visible,
+.mini-btn:focus-visible,
+.mini-select:focus-visible,
+.field input:focus-visible,
+.field select:focus-visible,
+footer a:focus-visible{
+  outline:2px solid var(--gold); outline-offset:2px;
+}
 
 /* ============ NAV ============ */
 .nav{
@@ -151,10 +167,11 @@ img{max-width:100%; display:block;}
 .brand{ display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:700; font-size:17px; }
 .brand-mark{
   width:34px; height:34px; border-radius:10px;
-  background:conic-gradient(from 180deg, var(--violet), var(--cyan), var(--amber), var(--violet));
-  animation:spin 6s linear infinite; will-change:transform;
+  background:conic-gradient(from 180deg, var(--gold-deep), var(--gold), var(--gold-pale), var(--gold-deep));
+  will-change:transform;
   display:flex; align-items:center; justify-content:center; position:relative;
 }
+@media (prefers-reduced-motion:no-preference){ .brand-mark{ animation:spin 6s linear infinite; } }
 .brand-mark::after{ content:""; position:absolute; inset:3px; border-radius:8px; background:var(--bg-1); }
 .brand-mark img{ position:relative; z-index:1; width:68%; height:68%; object-fit:contain; border-radius:50%; }
 @keyframes spin{ to{ transform:rotate(360deg); } }
@@ -174,11 +191,11 @@ img{max-width:100%; display:block;}
 }
 .theme-switch .knob{
   position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%;
-  background:linear-gradient(135deg,var(--amber),var(--rose));
+  background:linear-gradient(135deg,var(--gold-pale),var(--rose));
   transition:transform .4s var(--ease), background .4s var(--ease);
   display:flex; align-items:center; justify-content:center; font-size:11px;
 }
-html[data-theme="light"] .theme-switch .knob{ transform:translateX(22px); background:linear-gradient(135deg,var(--violet),var(--cyan)); }
+html[data-theme="light"] .theme-switch .knob{ transform:translateX(22px); background:linear-gradient(135deg,var(--gold-deep),var(--gold)); }
 
 /* mobile menu */
 @media (max-width:880px){
@@ -191,7 +208,7 @@ html[data-theme="light"] .theme-switch .knob{ transform:translateX(22px); backgr
 .hero-grid{ display:grid; grid-template-columns:1.1fr .9fr; gap:48px; align-items:center; }
 .hero h1{ font-size:clamp(38px,5.4vw,64px); line-height:1.03; margin:18px 0 20px; }
 .hero h1 .grad{
-  background:linear-gradient(120deg,var(--violet),var(--cyan) 60%,var(--amber));
+  background:linear-gradient(120deg,var(--gold-deep),var(--gold) 60%,var(--gold-pale));
   -webkit-background-clip:text; background-clip:text; color:transparent;
   background-size:200% auto; animation:gradShift 6s ease-in-out infinite;
 }
@@ -202,16 +219,17 @@ html[data-theme="light"] .theme-switch .knob{ transform:translateX(22px); backgr
 .orb-hero{
   position:absolute; inset:0; margin:auto; width:300px; height:300px; border-radius:50%; will-change:transform;
   background:radial-gradient(circle at 32% 28%, #fff3, transparent 40%),
-             conic-gradient(from 120deg, var(--violet), var(--cyan), var(--amber), var(--rose), var(--violet));
-  filter:blur(2px); opacity:.9; animation:orbFloat 7s ease-in-out infinite, spin 18s linear infinite;
+             conic-gradient(from 120deg, var(--gold-deep), var(--gold), var(--gold-pale), var(--rose), var(--gold-deep));
+  filter:blur(2px); opacity:.9;
   box-shadow:0 0 90px 10px rgba(255,179,0,.35);
 }
+@media (prefers-reduced-motion:no-preference){ .orb-hero{ animation:orbFloat 7s ease-in-out infinite, spin 18s linear infinite; } }
 @keyframes orbFloat{ 0%,100%{ transform:translateY(0px); } 50%{ transform:translateY(-18px); } }
 .hero-cards{ position:absolute; inset:0; pointer-events:none; }
 .float-card{
   position:absolute; padding:14px 16px; min-width:160px; pointer-events:auto;
-  animation:orbFloat 6s ease-in-out infinite;
 }
+@media (prefers-reduced-motion:no-preference){ .float-card{ animation:orbFloat 6s ease-in-out infinite; } }
 .float-card.c1{ top:6%; left:-4%; animation-delay:.2s; }
 .float-card.c2{ bottom:10%; right:-6%; animation-delay:1s; }
 .float-card.c3{ bottom:-4%; left:16%; animation-delay:1.8s; }
@@ -221,8 +239,10 @@ html[data-theme="light"] .theme-switch .knob{ transform:translateX(22px); backgr
 .quicknav{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:56px; }
 .qn-card{
   padding:20px; cursor:pointer; transition:transform .35s var(--ease), border-color .35s var(--ease);
+  text-align:left; display:flex; flex-direction:column; gap:0; font-family:inherit; width:100%;
 }
-.qn-card:hover{ transform:translateY(-4px); border-color:var(--violet); }
+.qn-card:focus-visible{ outline:2px solid var(--gold); outline-offset:3px; }
+.qn-card:hover{ transform:translateY(-4px); border-color:var(--gold-deep); }
 .qn-card .ic{ font-size:22px; margin-bottom:10px; }
 .qn-card .t{ font-weight:600; font-size:14.5px; margin-bottom:3px; }
 .qn-card .d{ font-size:12.5px; color:var(--text-2); }
@@ -243,13 +263,13 @@ html[data-theme="light"] .theme-switch .knob{ transform:translateX(22px); backgr
   background:var(--panel-hi); color:var(--text-0); font-size:13.5px; outline:none;
   transition:border-color .3s var(--ease);
 }
-.input:focus{ border-color:var(--violet); }
+.input:focus{ border-color:var(--gold-deep); }
 select.input{ cursor:pointer; }
 .chip{
   padding:6px 13px; border-radius:999px; border:1px solid var(--panel-border); background:transparent;
   font-size:12.5px; cursor:pointer; color:var(--text-1); transition:all .3s var(--ease);
 }
-.chip.active, .chip:hover{ background:var(--violet); color:#fff; border-color:transparent; }
+.chip.active, .chip:hover{ background:var(--gold-deep); color:#fff; border-color:transparent; }
 
 /* ============ ANNOUNCEMENTS ============ */
 .ann-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
@@ -259,7 +279,7 @@ select.input{ cursor:pointer; }
 }
 .card:hover{ transform:translateY(-5px); border-color:rgba(255,179,0,.4); }
 .card.pinned::before{
-  content:"📌 Pinned"; position:absolute; top:14px; right:16px; font-size:11px; color:var(--amber); font-family:var(--font-mono);
+  content:"📌 Pinned"; position:absolute; top:14px; right:16px; font-size:11px; color:var(--gold-pale); font-family:var(--font-mono);
 }
 .tag{
   display:inline-flex; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:600; width:fit-content;
@@ -302,11 +322,25 @@ select.input{ cursor:pointer; }
 }
 .news-thumb{
   height:150px; border-radius:14px; margin:-22px -22px 14px; width:calc(100% + 44px);
-  background:linear-gradient(135deg,var(--violet),var(--cyan));
+  background:linear-gradient(135deg,var(--gold-deep),var(--gold));
   display:flex; align-items:center; justify-content:center; font-size:34px;
 }
 .news-card h3{ font-size:15.5px; margin-bottom:6px; }
 .news-card p{ font-size:12.5px; color:var(--text-1); }
+
+/* ============ MEDIA / COLLABORATIONS ============ */
+.media-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:18px; }
+.media-card{ padding:14px; display:flex; flex-direction:column; gap:10px; }
+.media-thumb{
+  width:100%; aspect-ratio:4/3; border-radius:12px; overflow:hidden; background:var(--panel-hi);
+  display:flex; align-items:center; justify-content:center;
+}
+.media-thumb img, .media-thumb video{ width:100%; height:100%; object-fit:cover; display:block; }
+.media-caption{ font-size:13px; color:var(--text-1); line-height:1.5; }
+.media-meta{ display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--text-2); font-family:var(--font-mono); }
+.media-linked{ font-size:11px; color:var(--text-2); }
+.media-linked a{ color:var(--gold); }
+.media-card .mini-btn{ align-self:flex-start; }
 
 /* ============ DASHBOARD ============ */
 .dash-grid{ display:grid; grid-template-columns:2fr 1fr; gap:20px; }
@@ -321,7 +355,7 @@ select.input{ cursor:pointer; }
 @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
 .activity-item{ display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--panel-border); font-size:13px; }
 .activity-item:last-child{ border:none; }
-.activity-item .avatar{ width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,var(--violet),var(--cyan)); flex-shrink:0; }
+.activity-item .avatar{ width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,var(--gold-deep),var(--gold)); flex-shrink:0; }
 .activity-item .txt{ color:var(--text-1); }
 .activity-item .time{ margin-left:auto; font-size:11px; color:var(--text-2); font-family:var(--font-mono); white-space:nowrap; }
 
@@ -345,7 +379,7 @@ tr:last-child td{ border:none; }
 .status-dot.online{ background:var(--green); box-shadow:0 0 6px var(--green); }
 .status-dot.offline{ background:var(--text-2); }
 .mini-btn{ padding:5px 10px; font-size:11.5px; border-radius:8px; border:1px solid var(--panel-border); background:var(--panel-hi); cursor:pointer; color:var(--text-1); }
-.mini-btn:hover{ border-color:var(--violet); color:var(--text-0); }
+.mini-btn:hover{ border-color:var(--gold-deep); color:var(--text-0); }
 .mini-btn.danger:hover{ border-color:var(--rose); color:var(--rose); }
 
 @media (max-width:900px){ .dash-grid{ grid-template-columns:1fr; } .stat-row{ grid-template-columns:repeat(2,1fr); } }
@@ -364,11 +398,11 @@ tr:last-child td{ border:none; }
 .modal-backdrop.open .modal{ transform:scale(1) translateY(0); opacity:1; }
 .modal-tabs{ display:flex; gap:6px; margin-bottom:22px; background:var(--panel-hi); padding:4px; border-radius:999px; }
 .modal-tabs button{ flex:1; padding:9px; border:none; background:transparent; border-radius:999px; color:var(--text-1); cursor:pointer; font-weight:600; font-size:13px; transition:all .3s var(--ease); }
-.modal-tabs button.active{ background:var(--violet); color:#fff; }
+.modal-tabs button.active{ background:var(--gold-deep); color:#fff; }
 .field{ margin-bottom:14px; }
 .field label{ font-size:12px; color:var(--text-2); display:block; margin-bottom:6px; }
 .field input, .field select{ width:100%; padding:11px 14px; border-radius:10px; border:1px solid var(--panel-border); background:var(--panel-hi); color:var(--text-0); outline:none; font-size:14px; transition:border-color .3s var(--ease); }
-.field input:focus, .field select:focus{ border-color:var(--violet); }
+.field input:focus, .field select:focus{ border-color:var(--gold-deep); }
 .field-err{ font-size:11.5px; color:var(--rose); margin-top:4px; display:none; }
 .form-msg{ font-size:12.5px; padding:10px 12px; border-radius:10px; margin-bottom:14px; display:none; }
 .form-msg.show{ display:block; }
@@ -380,20 +414,22 @@ tr:last-child td{ border:none; }
 .solis-btn{
   position:fixed; bottom:24px; right:24px; width:62px; height:62px; border-radius:50%; z-index:400;
   border:none; cursor:pointer; background:var(--bg-1);
-  animation:orbFloat 4s ease-in-out infinite; will-change:transform;
+  will-change:transform;
   box-shadow:0 8px 30px -6px rgba(255,179,0,.55);
   display:flex; align-items:center; justify-content:center;
   overflow:visible;
 }
+@media (prefers-reduced-motion:no-preference){ .solis-btn{ animation:orbFloat 4s ease-in-out infinite; } }
 .solis-btn::before{
   content:""; position:absolute; inset:-4px; border-radius:50%;
-  background:conic-gradient(from 0deg,var(--violet),var(--cyan),var(--amber),var(--violet));
-  animation:spin 5s linear infinite; z-index:0; will-change:transform;
+  background:conic-gradient(from 0deg,var(--gold-deep),var(--gold),var(--gold-pale),var(--gold-deep));
+  z-index:0; will-change:transform;
 }
+@media (prefers-reduced-motion:no-preference){ .solis-btn::before{ animation:spin 5s linear infinite; } }
 .solis-btn::after{ content:""; position:absolute; inset:3px; border-radius:50%; background:var(--bg-1); z-index:0; }
 .solis-btn span{ position:relative; z-index:1; font-size:22px; }
 .solis-btn img{ position:relative; z-index:1; border-radius:50%; }
-.solis-btn:focus-visible{ outline:2px solid var(--cyan); outline-offset:4px; }
+.solis-btn:focus-visible{ outline:2px solid var(--gold); outline-offset:4px; }
 
 .solis-window{
   position:fixed; bottom:100px; right:24px; width:360px; max-width:calc(100vw - 32px); height:500px; max-height:70vh;
@@ -425,7 +461,7 @@ tr:last-child td{ border:none; }
   font-size:10.5px; padding:3px 8px; border-radius:8px; border:1px solid var(--panel-border);
   background:var(--panel-hi); color:var(--text-2); cursor:pointer;
 }
-.msg-toolbar button:hover{ color:var(--text-0); border-color:var(--violet); }
+.msg-toolbar button:hover{ color:var(--text-0); border-color:var(--gold-deep); }
 .msg-quickactions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:4px; }
 .msg-quickactions button{
   padding:7px 13px; border-radius:999px; font-size:12px; font-weight:600; cursor:pointer;
@@ -434,7 +470,7 @@ tr:last-child td{ border:none; }
 }
 .msg-quickactions button.confirm{ border-color:var(--rose); color:#fda4af; }
 .msg-quickactions button.confirm:hover{ background:var(--rose); color:#fff; }
-.msg-quickactions button.safe:hover{ background:var(--violet); color:#fff; border-color:transparent; }
+.msg-quickactions button.safe:hover{ background:var(--gold-deep); color:#fff; border-color:transparent; }
 .msg-quickactions button:disabled{ opacity:.45; cursor:default; }
 .solis-topic-pill{
   align-self:flex-start; font-family:var(--font-mono); font-size:10px; color:var(--text-2);
@@ -443,15 +479,15 @@ tr:last-child td{ border:none; }
 .solis-suggest{ display:flex; flex-wrap:wrap; gap:6px; padding:0 18px 12px; }
 .solis-input-row{ display:flex; gap:8px; padding:14px; border-top:1px solid var(--panel-border); }
 .solis-input-row input{ flex:1; background:var(--panel-hi); border:1px solid var(--panel-border); border-radius:999px; padding:10px 16px; color:var(--text-0); outline:none; font-size:13.5px; }
-.solis-input-row input:focus{ border-color:var(--violet); }
-.solis-input-row input:focus-visible{ outline:2px solid var(--cyan); outline-offset:2px; }
-.solis-input-row button{ width:38px; height:38px; border-radius:50%; border:none; background:linear-gradient(120deg,var(--violet),var(--cyan)); color:#fff; cursor:pointer; flex-shrink:0; }
-.solis-input-row button:focus-visible{ outline:2px solid var(--cyan); outline-offset:2px; }
+.solis-input-row input:focus{ border-color:var(--gold-deep); }
+.solis-input-row input:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+.solis-input-row button{ width:38px; height:38px; border-radius:50%; border:none; background:linear-gradient(120deg,var(--gold-deep),var(--gold)); color:#fff; cursor:pointer; flex-shrink:0; }
+.solis-input-row button:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
 .msg{ max-width:85%; padding:10px 14px; border-radius:14px; font-size:13.5px; line-height:1.5; animation:msgIn .3s var(--ease); }
 @keyframes msgIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
 .msg.bot{ background:var(--panel-hi); border:1px solid var(--panel-border); align-self:flex-start; border-bottom-left-radius:4px; }
-.msg.user{ background:linear-gradient(120deg,var(--violet),var(--cyan)); color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
-.msg.bot a{ color:var(--cyan); text-decoration:underline; }
+.msg.user{ background:linear-gradient(120deg,var(--gold-deep),var(--gold)); color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
+.msg.bot a{ color:var(--gold); text-decoration:underline; }
 .typing{ display:flex; gap:4px; padding:12px 14px; }
 .typing span{ width:6px; height:6px; border-radius:50%; background:var(--text-2); animation:typingBounce 1.2s infinite; }
 .typing span:nth-child(2){ animation-delay:.15s; }
@@ -460,8 +496,8 @@ tr:last-child td{ border:none; }
 .solis-suggest{ display:flex; flex-wrap:wrap; gap:6px; padding:0 18px 12px; }
 .solis-input-row{ display:flex; gap:8px; padding:14px; border-top:1px solid var(--panel-border); }
 .solis-input-row input{ flex:1; background:var(--panel-hi); border:1px solid var(--panel-border); border-radius:999px; padding:10px 16px; color:var(--text-0); outline:none; font-size:13.5px; }
-.solis-input-row input:focus{ border-color:var(--violet); }
-.solis-input-row button{ width:38px; height:38px; border-radius:50%; border:none; background:linear-gradient(120deg,var(--violet),var(--cyan)); color:#fff; cursor:pointer; flex-shrink:0; }
+.solis-input-row input:focus{ border-color:var(--gold-deep); }
+.solis-input-row button{ width:38px; height:38px; border-radius:50%; border:none; background:linear-gradient(120deg,var(--gold-deep),var(--gold)); color:#fff; cursor:pointer; flex-shrink:0; }
 
 /* ============ NOTIF CENTER ============ */
 .notif-panel{
@@ -471,7 +507,7 @@ tr:last-child td{ border:none; }
 .notif-panel.open{ transform:translateY(0); opacity:1; pointer-events:auto; }
 .notif-item{ display:flex; gap:10px; padding:11px; border-radius:12px; font-size:12.5px; }
 .notif-item:hover{ background:var(--panel-hi); }
-.notif-item .dot{ width:7px; height:7px; border-radius:50%; background:var(--cyan); margin-top:5px; flex-shrink:0; }
+.notif-item .dot{ width:7px; height:7px; border-radius:50%; background:var(--gold); margin-top:5px; flex-shrink:0; }
 .notif-item .body{ color:var(--text-1); }
 .notif-item .body b{ color:var(--text-0); }
 .notif-item .time{ font-size:10.5px; color:var(--text-2); margin-top:2px; }
@@ -480,10 +516,19 @@ tr:last-child td{ border:none; }
 
 /* ============ FOOTER ============ */
 footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-top:60px; }
+.social-row{ display:flex; gap:10px; margin-top:18px; }
+.social-row a{
+  width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:var(--panel-hi); border:1px solid var(--panel-border); color:var(--text-1);
+  transition:transform .3s var(--ease), border-color .3s var(--ease), color .3s var(--ease);
+}
+.social-row a:hover{ transform:translateY(-2px); border-color:var(--gold-deep); color:var(--gold); }
+.social-row a:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+.social-row svg{ width:17px; height:17px; }
 .footer-grid{ display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:30px; margin-bottom:40px; }
 .footer-grid h4{ font-size:13px; margin-bottom:14px; color:var(--text-2); text-transform:uppercase; letter-spacing:.05em; }
 .footer-grid a{ display:block; font-size:13.5px; color:var(--text-1); padding:5px 0; }
-.footer-grid a:hover{ color:var(--cyan); }
+.footer-grid a:hover{ color:var(--gold); }
 .footer-bottom{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--text-2); flex-wrap:wrap; gap:10px; }
 @media (max-width:760px){ .footer-grid{ grid-template-columns:1fr 1fr; } }
 
@@ -566,19 +611,19 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
 .loader-emblem.complete{ animation:emblemBurst .7s var(--ease) forwards; }
 @keyframes emblemBurst{ 0%{ box-shadow:0 0 40px 6px rgba(255,213,74,.3); } 50%{ box-shadow:0 0 90px 26px rgba(255,213,74,.6); transform:scale(1.06); } 100%{ box-shadow:0 0 60px 16px rgba(255,213,74,.4); transform:scale(1); } }
 .loader-brand-text{ font-family:var(--font-display); font-weight:800; font-size:22px; letter-spacing:.03em; color:#fff; margin-bottom:4px; text-align:center; }
-.loader-brand-text span{ background:linear-gradient(90deg,var(--amber),var(--violet) 50%,var(--cyan)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.loader-brand-text span{ background:linear-gradient(90deg,var(--gold-pale),var(--gold-deep) 50%,var(--gold)); -webkit-background-clip:text; background-clip:text; color:transparent; }
 .loader-brand-sub{ font-size:11.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--text-2); margin-bottom:38px; text-align:center; }
 .loader-bar-wrap{ width:min(340px, 78vw); }
 .loader-bar-track{ position:relative; height:8px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid rgba(255,213,74,.15); overflow:hidden; }
 .loader-bar-fill{
   position:absolute; left:0; top:0; bottom:0; width:0%; border-radius:999px;
-  background:linear-gradient(90deg, var(--violet), var(--cyan), var(--amber)); background-size:200% 100%;
+  background:linear-gradient(90deg, var(--gold-deep), var(--gold), var(--gold-pale)); background-size:200% 100%;
   animation:barShift 2.2s linear infinite; box-shadow:0 0 16px 2px rgba(255,213,74,.7); transition:width .35s var(--ease);
 }
 @keyframes barShift{ to{ background-position:-200% 0; } }
 .loader-bar-fill::after{ content:""; position:absolute; right:-2px; top:-6px; bottom:-6px; width:16px; border-radius:50%; background:radial-gradient(circle, rgba(255,241,118,.9), transparent 70%); filter:blur(2px); }
 .loader-bar-meta{ display:flex; justify-content:space-between; margin-top:12px; font-family:var(--font-display); }
-.loader-bar-pct{ font-weight:700; font-size:15px; color:var(--violet); font-variant-numeric:tabular-nums; }
+.loader-bar-pct{ font-weight:700; font-size:15px; color:var(--gold-deep); font-variant-numeric:tabular-nums; }
 .loader-bar-step{ font-size:11px; color:var(--text-2); }
 .loader-status-text{ margin-top:18px; height:20px; font-size:13.5px; color:var(--text-1); text-align:center; position:relative; width:100%; }
 .loader-status-text span{ position:absolute; inset:0; opacity:0; transform:translateY(6px); transition:opacity .5s var(--ease), transform .5s var(--ease); }
@@ -587,7 +632,7 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
 @media (max-width:640px){ .loader-solis-wrap{ right:6%; bottom:8%; } }
 .loader-solis-orb{
   width:46px; height:46px; border-radius:50%; position:relative;
-  background:radial-gradient(circle at 35% 30%, var(--amber), var(--violet) 55%, var(--cyan) 100%);
+  background:radial-gradient(circle at 35% 30%, var(--gold-pale), var(--gold-deep) 55%, var(--gold) 100%);
   box-shadow:0 0 22px 4px rgba(255,213,74,.7);
   animation:solisFloat 3.4s ease-in-out infinite, solisBlink 4s ease-in-out infinite;
 }
@@ -595,7 +640,7 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
 @keyframes solisBlink{ 0%,90%,100%{ filter:brightness(1); } 95%{ filter:brightness(1.5); } }
 .loader-solis-orb::before{ content:""; position:absolute; inset:-8px; border-radius:50%; border:1px solid rgba(255,213,74,.3); animation:solisRing 2.6s ease-out infinite; }
 @keyframes solisRing{ 0%{ transform:scale(.8); opacity:.8; } 100%{ transform:scale(1.6); opacity:0; } }
-.loader-solis-particle{ position:absolute; width:3px; height:3px; border-radius:50%; background:var(--amber); box-shadow:0 0 6px rgba(255,213,74,.7); opacity:0; animation:particleRise 2.4s ease-out infinite; }
+.loader-solis-particle{ position:absolute; width:3px; height:3px; border-radius:50%; background:var(--gold-pale); box-shadow:0 0 6px rgba(255,213,74,.7); opacity:0; animation:particleRise 2.4s ease-out infinite; }
 @keyframes particleRise{ 0%{ opacity:0; transform:translate(0,0) scale(.6); } 20%{ opacity:1; } 100%{ opacity:0; transform:translate(var(--dx,10px),-34px) scale(1); } }
 .loader-solis-bubble{
   position:absolute; bottom:64px; right:-10px; min-width:150px; padding:8px 13px;
@@ -668,12 +713,14 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
 
 <!-- NAV -->
 <nav class="nav glass" style="margin-top:34px;">
-  <a href="Member_Recruitment.html" class="brand"><span class="brand-mark"><img src="assets/club-logo.svg" alt="Multimedia Club logo" /></span> Multimedia</a>
+  <a href="#home" class="brand"><span class="brand-mark"><img src="assets/club-logo.svg" alt="Multimedia Club logo" /></span> Multimedia</a>
   <div class="nav-links">
     <a href="#home">Home</a>
     <a href="#announcements">Announcements</a>
     <a href="#events">Events</a>
     <a href="#news">News</a>
+    <a href="#collaborations">Collaborations</a>
+    <a href="#event-requests">For Clubs</a>
     <a href="#dashboard" id="navDashboardLink" class="hidden">Dashboard</a>
     <a href="#admin" id="navAdminLink" class="hidden">Admin</a>
   </div>
@@ -717,10 +764,10 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
     </div>
 
     <div class="quicknav">
-      <div class="qn-card glass reveal" onclick="scrollToId('announcements')"><div class="ic">📣</div><div class="t">Announcements</div><div class="d">Pinned & recent updates</div></div>
-      <div class="qn-card glass reveal" onclick="scrollToId('events')"><div class="ic">📅</div><div class="t">Events</div><div class="d">Calendar & countdowns</div></div>
-      <div class="qn-card glass reveal" onclick="scrollToId('news')"><div class="ic">📰</div><div class="t">News</div><div class="d">Stories from campus</div></div>
-      <div class="qn-card glass reveal" style="cursor:default;" title="Members know the way in"><div class="ic">🔒</div><div class="t">Member Portal</div><div class="d">Access is by invitation only</div></div>
+      <button class="qn-card glass reveal" onclick="scrollToId('announcements')"><span class="ic">📣</span><span class="t">Announcements</span><span class="d">Pinned & recent updates</span></button>
+      <button class="qn-card glass reveal" onclick="scrollToId('events')"><span class="ic">📅</span><span class="t">Events</span><span class="d">Calendar & countdowns</span></button>
+      <button class="qn-card glass reveal" onclick="scrollToId('news')"><span class="ic">📰</span><span class="t">News</span><span class="d">Stories from campus</span></button>
+      <div class="qn-card glass reveal" style="cursor:default;" title="Members know the way in"><span class="ic">🔒</span><span class="t">Member Portal</span><span class="d">Access is by invitation only</span></div>
     </div>
   </div>
 </header>
@@ -778,6 +825,98 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
   </div>
 </section>
 
+<!-- COLLABORATIONS — club partnerships + member-uploaded photos/videos -->
+<section class="section" id="collaborations">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Collaborations</div>
+        <h2>Working with other clubs</h2>
+      </div>
+    </div>
+    <div class="ann-grid" id="collabGrid" style="margin-bottom:36px;"></div>
+
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Shared media</div>
+        <h2>Photos &amp; videos from members</h2>
+      </div>
+      <div class="section-tools" id="mediaFilterChips"></div>
+    </div>
+
+    <div id="mediaUploadWrap" class="widget glass hidden" style="margin-bottom:22px;">
+      <h3>Share a photo or video</h3>
+      <div class="form-msg" id="mediaMsg"></div>
+      <form id="mediaUploadForm" onsubmit="handleMediaUpload(event)" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end;">
+        <div class="field" style="margin-bottom:0;">
+          <label>What's this for?</label>
+          <select class="input" style="width:100%;" id="mediaCategoryInput" onchange="onMediaCategoryChange()">
+            <option value="collaboration">A collaboration</option>
+            <option value="event">An event</option>
+            <option value="announcement">An announcement</option>
+          </select>
+        </div>
+        <div class="field hidden" id="mediaEventPickWrap" style="margin-bottom:0;">
+          <label>Which event?</label>
+          <select class="input" style="width:100%;" id="mediaEventInput"></select>
+        </div>
+        <div class="field hidden" id="mediaAnnPickWrap" style="margin-bottom:0;">
+          <label>Which announcement?</label>
+          <select class="input" style="width:100%;" id="mediaAnnInput"></select>
+        </div>
+        <div class="field" id="mediaCollabPickWrap" style="margin-bottom:0;">
+          <label>Which collaboration?</label>
+          <select class="input" style="width:100%;" id="mediaCollabInput"></select>
+        </div>
+        <div class="field" style="grid-column:1/-1;margin-bottom:0;">
+          <label>Caption (optional)</label>
+          <input class="input" style="width:100%;" id="mediaCaptionInput" placeholder="Say something about it…" />
+        </div>
+        <div class="field" style="grid-column:1/-1;margin-bottom:0;">
+          <label>Photo or video file</label>
+          <input type="file" id="mediaFileInput" accept="image/*,video/*" required style="width:100%;color:var(--text-1);" />
+        </div>
+        <button type="submit" class="btn primary" style="grid-column:1/-1;" id="mediaSubmitBtn">Upload</button>
+      </form>
+    </div>
+    <div id="mediaLoginPrompt" class="widget glass" style="margin-bottom:22px;text-align:center;color:var(--text-1);font-size:13.5px;">
+      Log in as a member to share your own photos and videos here.
+    </div>
+
+    <div class="media-grid" id="mediaGrid"></div>
+  </div>
+</section>
+
+<!-- EVENT REQUESTS — other clubs ask to have their event posted here -->
+<section class="section" id="event-requests">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">For other clubs</div>
+        <h2>Want your event posted here?</h2>
+      </div>
+    </div>
+    <p style="color:var(--text-1);font-size:14px;max-width:560px;margin:-18px 0 26px;">
+      Running an event and want it listed on our Events page? Fill this out — no account needed.
+      An officer will review it and let you know.
+    </p>
+
+    <div class="widget glass" style="max-width:720px;">
+      <form id="eventRequestForm" onsubmit="handleEventRequestSubmit(event)" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:end;">
+        <div class="field" style="margin-bottom:0;"><label>Your club's name</label><input class="input" style="width:100%;" id="erClubInput" required /></div>
+        <div class="field" style="margin-bottom:0;"><label>Event title</label><input class="input" style="width:100%;" id="erTitleInput" required /></div>
+        <div class="field" style="margin-bottom:0;"><label>Your name</label><input class="input" style="width:100%;" id="erContactNameInput" required /></div>
+        <div class="field" style="margin-bottom:0;"><label>Your email</label><input class="input" type="email" style="width:100%;" id="erContactEmailInput" required /></div>
+        <div class="field" style="margin-bottom:0;"><label>Proposed date &amp; time (optional)</label><input class="input" type="datetime-local" style="width:100%;" id="erDateInput" /></div>
+        <div class="field" style="margin-bottom:0;"><label>Location (optional)</label><input class="input" style="width:100%;" id="erLocationInput" /></div>
+        <div class="field" style="grid-column:1/-1;margin-bottom:0;"><label>Tell us about it</label><input class="input" style="width:100%;" id="erDescInput" placeholder="What's it about, who's it for…" /></div>
+        <button type="submit" class="btn primary" style="grid-column:1/-1;" id="erSubmitBtn">Submit request</button>
+      </form>
+      <div class="form-msg" id="erFormMsg" style="margin-top:14px;"></div>
+    </div>
+  </div>
+</section>
+
 <!-- STUDENT DASHBOARD (visible after login) -->
 <section class="section hidden" id="dashboard">
   <div class="container">
@@ -824,9 +963,10 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
 
     <div class="widget glass" style="margin-bottom:20px;">
       <h3>Publish content</h3>
-      <div class="modal-tabs" style="max-width:320px;margin-bottom:16px;">
+      <div class="modal-tabs" style="max-width:420px;margin-bottom:16px;">
         <button id="publishTabAnn" class="active" onclick="switchPublishTab('announcement')">Announcement</button>
         <button id="publishTabEvent" onclick="switchPublishTab('event')">Event</button>
+        <button id="publishTabCollab" onclick="switchPublishTab('collaboration')">Collaboration</button>
       </div>
       <div class="form-msg" id="publishMsg"></div>
 
@@ -856,6 +996,24 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
         <div class="field" style="margin-bottom:0;"><label>Description</label><input class="input" style="width:100%;" id="evDescInput" /></div>
         <button type="submit" class="btn primary" style="grid-column:1/-1;">Publish event</button>
       </form>
+
+      <form id="collabForm" class="hidden" onsubmit="handleCreateCollaboration(event)" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end;">
+        <div class="field" style="margin-bottom:0;"><label>Title</label><input class="input" style="width:100%;" id="collabTitleInput" required /></div>
+        <div class="field" style="margin-bottom:0;"><label>Partner club</label><input class="input" style="width:100%;" id="collabPartnerInput" required /></div>
+        <div class="field" style="grid-column:1/-1;margin-bottom:0;"><label>Description</label><input class="input" style="width:100%;" id="collabDescInput" /></div>
+        <div class="field" style="margin-bottom:0;"><label>Date (optional)</label><input class="input" type="datetime-local" style="width:100%;" id="collabDateInput" /></div>
+        <button type="submit" class="btn primary" style="grid-column:1/-1;">Publish collaboration</button>
+      </form>
+    </div>
+
+    <div class="widget glass" style="margin-bottom:20px;">
+      <h3>Event requests from other clubs <span class="chip" style="cursor:default;" id="erPendingChip">0 pending</span></h3>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Club</th><th>Event</th><th>Contact</th><th>Proposed</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="eventRequestsTbody"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="dash-grid">
@@ -903,6 +1061,7 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
       <div>
         <a href="#home" class="brand"><span class="brand-mark" style="width:28px;height:28px;"><img src="assets/club-logo.svg" alt="Multimedia Club logo" /></span>Multimedia</a>
         <p style="color:var(--text-2);font-size:13px;margin-top:14px;max-width:280px;">The central hub for club members and officers — with Solis to help you find your way.</p>
+        <div class="social-row" id="socialRow"></div>
       </div>
       <div>
         <h4>Explore</h4>
@@ -939,7 +1098,7 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
     </div>
     <div class="form-msg" id="authMsg"></div>
     <div id="resendConfirmRow" class="hidden" style="margin:-6px 0 14px;text-align:center;">
-      <a href="#" style="font-size:12.5px;color:var(--cyan);" onclick="resendConfirmation();return false;" id="resendConfirmLink">Resend confirmation email</a>
+      <a href="#" style="font-size:12.5px;color:var(--gold);" onclick="resendConfirmation();return false;" id="resendConfirmLink">Resend confirmation email</a>
     </div>
 
     <form id="loginForm" onsubmit="handleLogin(event)">
@@ -952,7 +1111,7 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
         <input type="password" id="loginPassword" required placeholder="••••••••" autocomplete="current-password" />
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <a href="#" style="font-size:12.5px;color:var(--cyan);" onclick="forgotPassword();return false;">Forgot password?</a>
+        <a href="#" style="font-size:12.5px;color:var(--gold);" onclick="forgotPassword();return false;">Forgot password?</a>
       </div>
       <button type="submit" class="btn primary" style="width:100%;" id="loginSubmitBtn">Log in</button>
     </form>
@@ -991,7 +1150,7 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
         <label>Password</label>
         <input type="password" id="adminLoginPassword" required placeholder="••••••••" autocomplete="current-password" />
       </div>
-      <button type="submit" class="btn primary" style="width:100%;background:linear-gradient(120deg,var(--rose),var(--violet));border:none;" id="adminLoginSubmitBtn">Authenticate</button>
+      <button type="submit" class="btn primary" style="width:100%;background:linear-gradient(120deg,var(--rose),var(--gold-deep));border:none;" id="adminLoginSubmitBtn">Authenticate</button>
       <p style="font-size:11.5px;color:var(--text-2);margin-top:14px;text-align:center;">This sequence only opens the login form — valid administrator credentials are still required.</p>
     </form>
   </div>
