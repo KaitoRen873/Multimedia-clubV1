@@ -66,6 +66,9 @@ const OFFICER_POSITIONS = [
 const ADMIN_SEAT_LIMIT = 2;
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MS = 20000;
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;   // 15MB
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024;  // 100MB — raise the bucket's own limit in Supabase if needed
+const ALLOWED_MEDIA_TYPES = ['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm','video/quicktime'];
 
 /* ---------- local cache (kept in sync with Supabase via realtime) ---------- */
 const cache = {
@@ -73,12 +76,16 @@ const cache = {
   announcements: [],
   events: [],
   news: [],
+  media: [],
+  collaborations: [],
+  eventRequests: [],
   savedIds: new Set(),
   loginEvents: [],
 };
 
 let state = {
   currentUser: null,           // profile row of the signed-in user, or null
+  mediaFilter: 'all',
   savedAnnouncements: [],      // announcement ids, mirrors cache.savedIds
   theme: 'dark',
   annFilter: {search:'', category:'all'},
@@ -140,12 +147,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Static UI (theme toggle, Konami codes, Solis chat shell, scroll
     // effects) all still work without a backend. Data-backed sections
     // just render their empty states until config.js is set up.
-    renderAnnouncements(); renderEvents(); renderNews();
+    renderAnnouncements(); renderEvents(); renderNews(); renderMedia();
     return;
   }
 
   try {
-    await Promise.all([fetchAnnouncements(), fetchEvents(), fetchNews(), fetchProfiles()]);
+    await Promise.all([fetchAnnouncements(), fetchEvents(), fetchNews(), fetchProfiles(), fetchMedia(), fetchCollaborations()]);
     renderAdminStats();
     logPageView();
     setupRealtimeSubscriptions();
@@ -388,6 +395,8 @@ function loginAs(user){
   if(user.account_type==='administrator'){
     document.getElementById('navAdminLink').classList.remove('hidden');
     document.getElementById('admin').classList.remove('hidden');
+    fetchEventRequests();
+    subscribeEventRequests();
   } else {
     document.getElementById('navAdminLink').classList.add('hidden');
     document.getElementById('admin').classList.add('hidden');
@@ -396,6 +405,8 @@ function loginAs(user){
   renderDashboardProfile();
   renderDashboardNextEvent();
   renderAnnouncements();
+  refreshMediaUploadUI();
+  renderMedia();
   updateSolisStatusLine();
   if(presenceChannel) trackPresence();
   addSolisMsg(`Hey ${user.name.split(' ')[0]}! You're logged in as ${user.account_type==='administrator'?'an Administrator':'a Member'}. Want a quick tour of your dashboard${user.account_type==='administrator'?' or the admin panel':''}?`,
@@ -406,6 +417,8 @@ function loginAs(user){
 function logoutUi(){
   state.currentUser = null;
   cache.savedIds = new Set();
+  cache.eventRequests = [];
+  unsubscribeEventRequests();
   document.getElementById('userMenuWrap').classList.add('hidden');
   document.getElementById('navDashboardLink').classList.add('hidden');
   document.getElementById('navAdminLink').classList.add('hidden');
@@ -413,6 +426,8 @@ function logoutUi(){
   document.getElementById('admin').classList.add('hidden');
   updateSolisStatusLine();
   renderAnnouncements();
+  refreshMediaUploadUI();
+  renderMedia();
   if(presenceChannel) trackPresence();
 }
 document.getElementById('logoutBtn').addEventListener('click', async ()=>{ if(!requireBackend()) return; await sb.auth.signOut(); scrollToId('home'); });
@@ -436,6 +451,23 @@ async function fetchNews(){
   const { data, error } = await sb.from('news').select('*').order('created_at',{ascending:false});
   if(!error) cache.news = data;
   renderNews();
+}
+async function fetchMedia(){
+  const { data, error } = await sb.from('media_posts').select('*').order('created_at',{ascending:false});
+  if(!error) cache.media = data;
+  renderMedia();
+}
+async function fetchCollaborations(){
+  const { data, error } = await sb.from('collaborations').select('*').order('created_at',{ascending:false});
+  if(!error) cache.collaborations = data;
+  renderCollabGrid();
+  if(state.currentUser) populateMediaLinkOptions();
+}
+async function fetchEventRequests(){
+  if(!isAdmin()) return; // RLS would return nothing anyway; skip the call
+  const { data, error } = await sb.from('event_requests').select('*').order('created_at',{ascending:false});
+  if(!error) cache.eventRequests = data;
+  renderEventRequestsTable();
 }
 async function fetchProfiles(){
   const { data, error } = await sb.from('profiles').select('*').order('created_at',{ascending:true});
@@ -468,6 +500,28 @@ function setupRealtimeSubscriptions(){
   const debouncedEvents = debounce(fetchEvents, 400);
   const debouncedNews = debounce(fetchNews, 400);
   const debouncedProfiles = debounce(fetchProfiles, 400);
+  const debouncedMedia = debounce(fetchMedia, 400);
+  const debouncedCollaborations = debounce(fetchCollaborations, 400);
+
+  sb.channel('public:media_posts')
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'media_posts'}, (payload)=>{
+      if(!state.currentUser || payload.new.uploader_id !== state.currentUser.id){
+        pushNotification(`<b>${escapeHtml(payload.new.uploader_name)}</b> shared a new ${payload.new.media_type}.`);
+      }
+      debouncedMedia();
+    })
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'media_posts'}, debouncedMedia)
+    .on('postgres_changes', {event:'DELETE', schema:'public', table:'media_posts'}, debouncedMedia)
+    .subscribe();
+
+  sb.channel('public:collaborations')
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'collaborations'}, (payload)=>{
+      pushNotification(`<b>New collaboration:</b> ${escapeHtml(payload.new.title)} with ${escapeHtml(payload.new.partner_club)}`);
+      debouncedCollaborations();
+    })
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'collaborations'}, debouncedCollaborations)
+    .on('postgres_changes', {event:'DELETE', schema:'public', table:'collaborations'}, debouncedCollaborations)
+    .subscribe();
 
   sb.channel('public:announcements')
     .on('postgres_changes', {event:'INSERT', schema:'public', table:'announcements'}, (payload)=>{
@@ -725,14 +779,300 @@ function renderNews(search=''){
 document.getElementById('newsSearch').addEventListener('input', debounce(e=> renderNews(e.target.value), 180));
 
 /* ============================================================
+   MEDIA / COLLABORATIONS — members share photos & videos for
+   events, announcements, or club collaborations
+   ============================================================ */
+function renderCollabGrid(){
+  const grid = document.getElementById('collabGrid');
+  if(!grid) return;
+  grid.innerHTML = cache.collaborations.length ? cache.collaborations.map(c=>`
+    <div class="card glass">
+      <span class="tag general">${escapeHtml(c.partner_club)}</span>
+      <h3>${escapeHtml(c.title)}</h3>
+      ${c.description ? `<p>${escapeHtml(c.description)}</p>` : ''}
+      <div class="card-meta">
+        <span>${c.collab_date ? formatDate(c.collab_date) : 'Ongoing'}</span>
+        <span>${formatDate(c.created_at)}</span>
+      </div>
+      ${isAdmin() ? `<button class="btn-ghost btn" style="align-self:flex-start;padding:6px 10px;font-size:12px;color:var(--rose);" onclick="deleteCollaboration(${c.id})">Delete</button>` : ''}
+    </div>
+  `).join('') : `<div class="empty-state">No collaborations posted yet.</div>`;
+}
+async function deleteCollaboration(id){
+  if(!requireBackend()) return;
+  if(!confirm('Delete this collaboration listing?')) return;
+  const { error } = await sb.from('collaborations').delete().eq('id', id);
+  if(error){ alert(error.message); return; }
+  writeAudit('delete_collaboration', null, `Deleted collaboration #${id}`);
+}
+
+/* ============================================================
+   EVENT REQUESTS — other clubs ask to have their event posted
+   ============================================================ */
+function showEventRequestMsg(text, type){
+  const el = document.getElementById('erFormMsg');
+  el.textContent = text; el.className = 'form-msg show '+type;
+}
+async function handleEventRequestSubmit(e){
+  e.preventDefault();
+  if(!requireBackend()) return;
+  const btn = document.getElementById('erSubmitBtn');
+  const clubName = document.getElementById('erClubInput').value.trim();
+  const eventTitle = document.getElementById('erTitleInput').value.trim();
+  const contactName = document.getElementById('erContactNameInput').value.trim();
+  const contactEmail = document.getElementById('erContactEmailInput').value.trim();
+  const proposedDate = document.getElementById('erDateInput').value;
+  const location = document.getElementById('erLocationInput').value.trim();
+  const description = document.getElementById('erDescInput').value.trim();
+
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  const { error } = await sb.from('event_requests').insert({
+    club_name: clubName,
+    contact_name: contactName,
+    contact_email: contactEmail,
+    event_title: eventTitle,
+    description: description || null,
+    proposed_date: proposedDate ? new Date(proposedDate).toISOString() : null,
+    location: location || null,
+  });
+  btn.disabled = false; btn.textContent = 'Submit request';
+
+  if(error){ showEventRequestMsg(error.message, 'err'); return; }
+  showEventRequestMsg("Thanks! We've got it — an officer will review your request and reach out if needed.", 'ok');
+  e.target.reset();
+}
+
+function renderEventRequestsTable(){
+  const tbody = document.getElementById('eventRequestsTbody');
+  if(!tbody) return;
+  const pending = cache.eventRequests.filter(r=>r.status==='Pending').length;
+  const chip = document.getElementById('erPendingChip');
+  if(chip) chip.textContent = `${pending} pending`;
+
+  tbody.innerHTML = cache.eventRequests.length ? cache.eventRequests.map(r=>`
+    <tr>
+      <td><b>${escapeHtml(r.club_name)}</b></td>
+      <td>${escapeHtml(r.event_title)}${r.location?`<br><span style="color:var(--text-2);font-size:11px;">${escapeHtml(r.location)}</span>`:''}</td>
+      <td>${escapeHtml(r.contact_name)}<br><span style="color:var(--text-2);font-size:11px;">${escapeHtml(r.contact_email)}</span></td>
+      <td class="mono" style="font-size:11px;">${r.proposed_date ? formatDate(r.proposed_date) : '—'}</td>
+      <td><span class="role-badge ${r.status==='Approved'?'member':(r.status==='Declined'?'none':'officer')}">${r.status}</span></td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${r.status==='Pending' ? `
+          <button class="mini-btn" onclick="approveEventRequest(${r.id})">Approve &amp; post</button>
+          <button class="mini-btn danger" onclick="declineEventRequest(${r.id})">Decline</button>
+        ` : `<button class="mini-btn danger" onclick="deleteEventRequest(${r.id})">Remove</button>`}
+      </td>
+    </tr>
+  `).join('') : `<tr><td colspan="6"><div class="empty-state">No requests from other clubs yet.</div></td></tr>`;
+}
+
+async function approveEventRequest(id){
+  if(!requireBackend()) return;
+  const req = cache.eventRequests.find(r=>r.id===id);
+  if(!req) return;
+  if(!confirm(`Post "${req.event_title}" to the Events page and mark this request approved?`)) return;
+
+  const { data: newEvent, error: insertError } = await sb.from('events').insert({
+    title: req.event_title,
+    event_date: req.proposed_date || new Date(Date.now()+7*86400000).toISOString(),
+    category: 'general',
+    location: req.location || 'TBA',
+    description: (req.description ? req.description+' ' : '') + `(Submitted by ${req.club_name})`,
+    created_by: state.currentUser.id,
+  }).select().single();
+  if(insertError){ alert(insertError.message); return; }
+
+  const { error: updateError } = await sb.from('event_requests').update({
+    status: 'Approved', reviewed_by: state.currentUser.id, created_event_id: newEvent.id,
+  }).eq('id', id);
+  if(updateError){ alert(updateError.message); return; }
+
+  writeAudit('approve_event_request', null, `${req.event_title} (${req.club_name})`);
+  fetchEvents();
+}
+async function declineEventRequest(id){
+  if(!requireBackend()) return;
+  const req = cache.eventRequests.find(r=>r.id===id);
+  if(!confirm('Decline this event request?')) return;
+  const { error } = await sb.from('event_requests').update({
+    status: 'Declined', reviewed_by: state.currentUser.id,
+  }).eq('id', id);
+  if(error){ alert(error.message); return; }
+  writeAudit('decline_event_request', null, req ? `${req.event_title} (${req.club_name})` : `#${id}`);
+}
+async function deleteEventRequest(id){
+  if(!requireBackend()) return;
+  if(!confirm('Remove this request from the list?')) return;
+  const { error } = await sb.from('event_requests').delete().eq('id', id);
+  if(error){ alert(error.message); return; }
+}
+
+let eventRequestsChannel = null;
+function subscribeEventRequests(){
+  if(eventRequestsChannel) return; // already subscribed
+  const debouncedRefresh = debounce(fetchEventRequests, 400);
+  eventRequestsChannel = sb.channel('public:event_requests')
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'event_requests'}, (payload)=>{
+      pushNotification(`<b>New event request:</b> ${escapeHtml(payload.new.club_name)} — ${escapeHtml(payload.new.event_title)}`);
+      debouncedRefresh();
+    })
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'event_requests'}, debouncedRefresh)
+    .on('postgres_changes', {event:'DELETE', schema:'public', table:'event_requests'}, debouncedRefresh)
+    .subscribe();
+}
+function unsubscribeEventRequests(){
+  if(eventRequestsChannel){ sb.removeChannel(eventRequestsChannel); eventRequestsChannel = null; }
+}
+
+
+function renderMedia(){
+  const chipsWrap = document.getElementById('mediaFilterChips');
+  const cats = [['all','All'],['event','Events'],['announcement','Announcements'],['collaboration','Collaborations']];
+  chipsWrap.innerHTML = cats.map(([v,label])=>`<button class="chip ${state.mediaFilter===v?'active':''}" onclick="setMediaFilter('${v}')">${label}</button>`).join('');
+
+  const grid = document.getElementById('mediaGrid');
+  const list = cache.media.filter(m=> state.mediaFilter==='all' || m.category===state.mediaFilter);
+
+  grid.innerHTML = list.length ? list.map(m=>{
+    const canManage = state.currentUser && (state.currentUser.id===m.uploader_id || isAdmin());
+    let linkedHtml = '';
+    if(m.category==='event' && m.event_id){
+      const ev = cache.events.find(e=>e.id===m.event_id);
+      if(ev) linkedHtml = `<div class="media-linked">For event: <a href="#events" onclick="scrollToId('events')">${escapeHtml(ev.title)}</a></div>`;
+    } else if(m.category==='announcement' && m.announcement_id){
+      const a = cache.announcements.find(x=>x.id===m.announcement_id);
+      if(a) linkedHtml = `<div class="media-linked">For announcement: <a href="#announcements" onclick="scrollToId('announcements')">${escapeHtml(a.title)}</a></div>`;
+    } else if(m.category==='collaboration' && m.collaboration_id){
+      const c = cache.collaborations.find(x=>x.id===m.collaboration_id);
+      if(c) linkedHtml = `<div class="media-linked">For collaboration: <a href="#collaborations" onclick="scrollToId('collaborations')">${escapeHtml(c.title)}</a></div>`;
+    }
+    return `
+    <div class="media-card glass">
+      <div class="media-thumb">
+        ${m.media_type==='video'
+          ? `<video src="${m.media_url}" controls preload="metadata"></video>`
+          : `<img src="${m.media_url}" alt="${escapeHtml(m.caption||'Shared media')}" loading="lazy" />`}
+      </div>
+      ${m.caption ? `<div class="media-caption">${escapeHtml(m.caption)}</div>` : ''}
+      ${linkedHtml}
+      <div class="media-meta">
+        <span>${escapeHtml(m.uploader_name)}</span>
+        <span>${formatDate(m.created_at)}</span>
+      </div>
+      ${canManage ? `<button class="mini-btn danger" onclick="deleteMedia(${m.id}, '${m.storage_path}')">Delete</button>` : ''}
+    </div>`;
+  }).join('') : `<div class="empty-state">No media shared yet — be the first to post something.</div>`;
+}
+function setMediaFilter(v){ state.mediaFilter = v; renderMedia(); }
+
+function refreshMediaUploadUI(){
+  const canPost = !!state.currentUser;
+  document.getElementById('mediaUploadWrap').classList.toggle('hidden', !canPost);
+  document.getElementById('mediaLoginPrompt').classList.toggle('hidden', canPost);
+  if(canPost) populateMediaLinkOptions();
+}
+function populateMediaLinkOptions(){
+  const evSel = document.getElementById('mediaEventInput');
+  evSel.innerHTML = cache.events.map(e=>`<option value="${e.id}">${escapeHtml(e.title)}</option>`).join('') || '<option value="">No events yet</option>';
+  const annSel = document.getElementById('mediaAnnInput');
+  annSel.innerHTML = cache.announcements.map(a=>`<option value="${a.id}">${escapeHtml(a.title)}</option>`).join('') || '<option value="">No announcements yet</option>';
+  const collabSel = document.getElementById('mediaCollabInput');
+  collabSel.innerHTML = '<option value="">General / not a specific one</option>'
+    + cache.collaborations.map(c=>`<option value="${c.id}">${escapeHtml(c.title)} (${escapeHtml(c.partner_club)})</option>`).join('');
+}
+function onMediaCategoryChange(){
+  const cat = document.getElementById('mediaCategoryInput').value;
+  document.getElementById('mediaEventPickWrap').classList.toggle('hidden', cat!=='event');
+  document.getElementById('mediaAnnPickWrap').classList.toggle('hidden', cat!=='announcement');
+  document.getElementById('mediaCollabPickWrap').classList.toggle('hidden', cat!=='collaboration');
+}
+function showMediaMsg(text, type){ const el=document.getElementById('mediaMsg'); el.textContent=text; el.className='form-msg show '+type; }
+
+async function handleMediaUpload(e){
+  e.preventDefault();
+  if(!requireBackend()) return;
+  if(!state.currentUser){ showMediaMsg('Log in first to share media.', 'err'); return; }
+
+  const fileInput = document.getElementById('mediaFileInput');
+  const file = fileInput.files[0];
+  if(!file){ showMediaMsg('Choose a photo or video file first.', 'err'); return; }
+  if(!ALLOWED_MEDIA_TYPES.includes(file.type)){
+    showMediaMsg('That file type isn\'t supported. Use JPG, PNG, WEBP, GIF, MP4, WEBM, or MOV.', 'err');
+    return;
+  }
+  const isVideo = file.type.startsWith('video/');
+  const maxBytes = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
+  if(file.size > maxBytes){
+    showMediaMsg(`That file is too large — max ${Math.round(maxBytes/1024/1024)}MB for ${isVideo?'video':'images'}.`, 'err');
+    return;
+  }
+
+  const category = document.getElementById('mediaCategoryInput').value;
+  const caption = document.getElementById('mediaCaptionInput').value.trim();
+  const eventId = category==='event' ? (document.getElementById('mediaEventInput').value || null) : null;
+  const announcementId = category==='announcement' ? (document.getElementById('mediaAnnInput').value || null) : null;
+  const collaborationId = category==='collaboration' ? (document.getElementById('mediaCollabInput').value || null) : null;
+
+  const btn = document.getElementById('mediaSubmitBtn');
+  btn.disabled = true;
+  showMediaMsg('Uploading…', 'ok');
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storagePath = `${state.currentUser.id}/${Date.now()}_${safeName}`;
+
+  const { error: uploadError } = await sb.storage.from('media').upload(storagePath, file);
+  if(uploadError){
+    btn.disabled = false;
+    showMediaMsg(uploadError.message, 'err');
+    return;
+  }
+  const { data: urlData } = sb.storage.from('media').getPublicUrl(storagePath);
+
+  const { error: insertError } = await sb.from('media_posts').insert({
+    uploader_id: state.currentUser.id,
+    uploader_name: state.currentUser.name,
+    category,
+    event_id: eventId,
+    announcement_id: announcementId,
+    collaboration_id: collaborationId,
+    caption: caption || null,
+    storage_path: storagePath,
+    media_url: urlData.publicUrl,
+    media_type: isVideo ? 'video' : 'image',
+  });
+  btn.disabled = false;
+
+  if(insertError){
+    // Clean up the uploaded file if the DB row failed, so it doesn't
+    // sit orphaned in storage with nothing pointing to it.
+    await sb.storage.from('media').remove([storagePath]);
+    showMediaMsg(insertError.message, 'err');
+    return;
+  }
+  showMediaMsg('Uploaded! Thanks for sharing.', 'ok');
+  e.target.reset();
+  onMediaCategoryChange();
+}
+
+async function deleteMedia(id, storagePath){
+  if(!requireBackend()) return;
+  if(!confirm('Remove this photo/video?')) return;
+  await sb.storage.from('media').remove([storagePath]);
+  const { error } = await sb.from('media_posts').delete().eq('id', id);
+  if(error){ alert(error.message); return; }
+}
+
+/* ============================================================
    ADMIN — publish content
    ============================================================ */
 function switchPublishTab(tab){
   publishTab = tab;
   document.getElementById('publishTabAnn').classList.toggle('active', tab==='announcement');
   document.getElementById('publishTabEvent').classList.toggle('active', tab==='event');
+  document.getElementById('publishTabCollab').classList.toggle('active', tab==='collaboration');
   document.getElementById('announcementForm').classList.toggle('hidden', tab!=='announcement');
   document.getElementById('eventForm').classList.toggle('hidden', tab!=='event');
+  document.getElementById('collabForm').classList.toggle('hidden', tab!=='collaboration');
 }
 function showPublishMsg(text, type){ const el=document.getElementById('publishMsg'); el.textContent=text; el.className='form-msg show '+type; }
 
@@ -765,6 +1105,23 @@ async function handleCreateEvent(e){
   if(error){ showPublishMsg(error.message, 'err'); return; }
   writeAudit('create_event', null, title);
   showPublishMsg('Event published.', 'ok');
+  e.target.reset();
+}
+async function handleCreateCollaboration(e){
+  if(!requireBackend()) return;
+  e.preventDefault();
+  const title = document.getElementById('collabTitleInput').value.trim();
+  const partnerClub = document.getElementById('collabPartnerInput').value.trim();
+  const description = document.getElementById('collabDescInput').value.trim();
+  const date = document.getElementById('collabDateInput').value;
+  const { error } = await sb.from('collaborations').insert({
+    title, partner_club: partnerClub, description: description || null,
+    collab_date: date ? new Date(date).toISOString() : null,
+    created_by: state.currentUser.id
+  });
+  if(error){ showPublishMsg(error.message, 'err'); return; }
+  writeAudit('create_collaboration', null, `${title} (${partnerClub})`);
+  showPublishMsg('Collaboration published.', 'ok');
   e.target.reset();
 }
 
@@ -975,6 +1332,26 @@ function wireStaticControls(){
   document.getElementById('notifBtn').addEventListener('click', e=>{ e.stopPropagation(); document.getElementById('notifPanel').classList.toggle('open'); });
   document.addEventListener('click', ()=> document.getElementById('notifPanel').classList.remove('open'));
   renderNotifications();
+  renderSocialLinks();
+}
+
+/* Simple, original line-icon glyphs — not traced from any brand's
+   official assets, just enough shape to be recognizable. */
+const SOCIAL_ICONS = {
+  instagram: `<rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor"/>`,
+  facebook: `<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14 8.5h-1.5c-.8 0-1.2.4-1.2 1.2V11h2.5l-.3 2.2h-2.2V19h-2.3v-5.8H9V11h1.5V9.3c0-1.8 1.1-3 3-3H14z" fill="currentColor"/>`,
+  twitter: `<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 7.5l9 9M16.5 7.5l-9 9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`,
+  youtube: `<rect x="3" y="6" width="18" height="12" rx="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.2 9.6l4.6 2.4-4.6 2.4z" fill="currentColor"/>`,
+  tiktok: `<path d="M13 3v10.8a3 3 0 1 1-2-2.83V3h2z" fill="currentColor"/><path d="M13 3.3c.35 2.2 2 3.85 4.2 4.05v1.8c-1.55 0-2.95-.5-4.2-1.35" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`,
+};
+const SOCIAL_LABELS = { instagram:'Instagram', facebook:'Facebook', twitter:'X (Twitter)', youtube:'YouTube', tiktok:'TikTok' };
+function renderSocialLinks(){
+  const row = document.getElementById('socialRow');
+  if(!row || typeof SOCIAL_LINKS === 'undefined') return;
+  const links = Object.keys(SOCIAL_ICONS)
+    .filter(key => SOCIAL_LINKS[key] && SOCIAL_LINKS[key].trim())
+    .map(key => `<a href="${escapeHtml(SOCIAL_LINKS[key].trim())}" target="_blank" rel="noopener noreferrer" aria-label="${SOCIAL_LABELS[key]}" title="${SOCIAL_LABELS[key]}"><svg viewBox="0 0 24 24" fill="none">${SOCIAL_ICONS[key]}</svg></a>`);
+  row.innerHTML = links.join('');
 }
 function renderNotifications(){
   const panel = document.getElementById('notifPanel');
@@ -1059,6 +1436,18 @@ const solisIntents = [
   { id:'news', kw:['news','story','stories','article'],
     respond:(ctx)=>{ const n = cache.news[0]; if(!n) return {text:"No news posted yet."}; ctx.lastTopic={type:'news',id:n.id};
       return { text:`Here's a recent story: <b>${n.title}</b> — ${n.body}`, quickActions:[{label:'Open news', style:'safe', action:'go_news'}] }; } },
+  { id:'collaborations', kw:['collaboration','collaborations','partner club','partnership','photos','videos','pictures','media','gallery','upload'],
+    respond:()=>{
+      const c = cache.collaborations[0];
+      const base = c
+        ? `The most recent collaboration is <b>${c.title}</b> with ${c.partner_club}. `
+        : `There aren't any collaborations posted yet. `;
+      return { text: base + `Any logged-in member can also share photos or videos there for events, announcements, or collaborations.`,
+        quickActions:[{label:'Open collaborations', style:'safe', action:'go_collaborations'}] };
+    } },
+  { id:'event_request', kw:['post our event','post an event','list our event','other club','request an event','submit an event','feature our event'],
+    respond:()=>({ text:"If you're from another club, there's a form for exactly that — no account needed. Fill in your club name, contact info, and event details, and an officer will review it.",
+      quickActions:[{label:'Open the form', style:'safe', action:'go_event_requests'}] }) },
   { id:'login', kw:['login','log in','signin','sign in'],
     respond:()=>({ text:"There's no visible login button by design — the member portal opens with a hidden keyboard sequence. If you don't know it, ask a current officer." }) },
   { id:'register', kw:['register','sign up','signup','join'],
@@ -1162,6 +1551,8 @@ async function handleQuickAction(action, qaWrap){
   if(action==='go_announcements'){ scrollToId('announcements'); return; }
   if(action==='go_events'){ scrollToId('events'); return; }
   if(action==='go_news'){ scrollToId('news'); return; }
+  if(action==='go_collaborations'){ scrollToId('collaborations'); return; }
+  if(action==='go_event_requests'){ scrollToId('event-requests'); return; }
   if(action==='go_dashboard'){ scrollToId('dashboard'); return; }
   if(action==='go_admin'){ scrollToId('admin'); return; }
   if(action==='cancel_admin_action'){ solisCtx.pendingConfirm=null; addBotMsg('Okay, no changes made.'); return; }
@@ -1178,7 +1569,7 @@ function solisIsVisible(){ return document.getElementById('solisWindow').classLi
 function clearSolisBadge(){ solisUnread=0; document.getElementById('solisBtnBadge').classList.add('hidden'); document.getElementById('solisMiniBadge').style.display='none'; }
 function bumpSolisBadge(){ solisUnread++; const b1=document.getElementById('solisBtnBadge'); b1.textContent=solisUnread; b1.classList.remove('hidden'); const b2=document.getElementById('solisMiniBadge'); b2.style.display='flex'; b2.textContent=solisUnread; }
 function updateSolisStatusLine(){
-  const labelMap = {home:'Home', announcements:'Announcements', events:'Events', news:'News', dashboard:'Dashboard', admin:'Admin'};
+  const labelMap = {home:'Home', announcements:'Announcements', events:'Events', news:'News', collaborations:'Collaborations', 'event-requests':'For Clubs', dashboard:'Dashboard', admin:'Admin'};
   const roleTxt = state.currentUser ? ' · '+(state.currentUser.account_type==='administrator'?'Administrator':(state.currentUser.club_role||'Member')) : '';
   const el = document.getElementById('solisStatusLine');
   if(el) el.textContent = `● online${roleTxt} · sees ${labelMap[solisCtx.currentSection]||'Home'}`;
@@ -1189,7 +1580,7 @@ function trackSection(id){
   updateSolisStatusLine();
 }
 function setupSectionTracking(){
-  ['home','announcements','events','news','dashboard','admin'].forEach(id=>{
+  ['home','announcements','events','news','collaborations','event-requests','dashboard','admin'].forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
     const obs = new IntersectionObserver(entries=>{ entries.forEach(e=>{ if(e.isIntersecting) trackSection(id); }); }, {threshold:0.35});
     obs.observe(el);
