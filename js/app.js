@@ -1546,6 +1546,72 @@ function renderWelcome(){
   renderSolisSuggestions(defaultSolisSuggestions);
 }
 function setupSolis(){ renderWelcome(); setupSectionTracking(); }
+
+/* ---------- proactive greeting bubble near the Solis button ---------- */
+const SOLIS_GREETINGS = [
+  "Hi, I'm Solis 👋 This is the Multimedia Club hub — announcements, events, news, and club collaborations all live here. Ask me anything, or just look around.",
+  "Welcome! I'm Solis, the club's guide. Check Events for what's coming up, Announcements for the latest updates, or ask me directly — I'm always here.",
+  "Hey there ✨ I'm Solis. New here? This site covers club announcements, upcoming events, news, and collaborations with other clubs — happy to point you anywhere.",
+];
+const SOLIS_GREETING_STORAGE_KEY = 'solisGreetingLastShown';
+let solisGreetingShown = false;
+
+function pickSolisGreetingText(){
+  // Prefer something real and current over the generic explainer —
+  // a pinned announcement or the next event is more useful the
+  // moment someone lands on the site than a canned intro line.
+  const pinned = cache.announcements?.find(a => a.pinned);
+  if(pinned) return `Hi, I'm Solis 👋 There's a pinned announcement right now: <b>${escapeHtml(pinned.title)}</b>. Want the details, or a look around the site?`;
+  const ev = typeof nextEvent === 'function' ? nextEvent() : null;
+  if(ev) return `Hi, I'm Solis 👋 The next event is <b>${escapeHtml(ev.title)}</b> on ${formatDate(ev.event_date)}. I can also point you to announcements, news, or collaborations.`;
+  return SOLIS_GREETINGS[Math.floor(Math.random()*SOLIS_GREETINGS.length)];
+}
+
+function shouldShowSolisGreetingToday(){
+  try{
+    const last = localStorage.getItem(SOLIS_GREETING_STORAGE_KEY);
+    const today = new Date().toDateString();
+    if(last === today) return false;
+    localStorage.setItem(SOLIS_GREETING_STORAGE_KEY, today);
+    return true;
+  }catch(e){
+    // Storage blocked (private browsing, etc.) — fall back to
+    // showing it, same as before this change.
+    return true;
+  }
+}
+
+function showSolisGreeting(){
+  if(solisGreetingShown || solisCtx.chatOpenedOnce) return;
+  if(!shouldShowSolisGreetingToday()) return;
+  solisGreetingShown = true;
+  const bubble = document.getElementById('solisGreetBubble');
+  const textEl = document.getElementById('solisGreetText');
+  if(!bubble || !textEl) return;
+  textEl.innerHTML = pickSolisGreetingText();
+  bubble.classList.add('show');
+  setTimeout(hideSolisGreeting, 11000);
+}
+// Show right as the intro loader actually finishes clearing the
+// screen, not on a guessed delay — previously this fired at a fixed
+// 1.8s while the full-screen loader was still covering everything
+// for ~4.9s, silently burning through a third of its visible window
+// behind it. A short fallback timer covers browsers/edge cases where
+// the loader event never fires for any reason.
+window.addEventListener('introLoaderDone', showSolisGreeting, { once:true });
+setTimeout(showSolisGreeting, 6000);
+function hideSolisGreeting(){
+  document.getElementById('solisGreetBubble')?.classList.remove('show');
+}
+function openSolisFromGreeting(){
+  hideSolisGreeting();
+  openSolis();
+}
+function dismissSolisGreeting(event){
+  event.stopPropagation();
+  hideSolisGreeting();
+}
+
 async function handleQuickAction(action, qaWrap){
   if(qaWrap) Array.from(qaWrap.children).forEach(b=>b.disabled=true);
   if(action==='go_announcements'){ scrollToId('announcements'); return; }
@@ -1560,7 +1626,7 @@ async function handleQuickAction(action, qaWrap){
   if(m){ const reply = await executeAdminAction(m[1], m[2]); addBotMsg(reply.text); solisCtx.pendingConfirm=null; return; }
 }
 function askSuggestion(text){ document.getElementById('solisInput').value=text; sendSolis(); }
-function openSolis(){ document.getElementById('solisWindow').classList.remove('minimized'); document.getElementById('solisWindow').classList.add('open'); document.getElementById('solisMinibar').classList.add('hidden'); document.getElementById('solisInput').focus(); solisCtx.chatOpenedOnce=true; clearSolisBadge(); }
+function openSolis(){ document.getElementById('solisWindow').classList.remove('minimized'); document.getElementById('solisWindow').classList.add('open'); document.getElementById('solisMinibar').classList.add('hidden'); document.getElementById('solisInput').focus(); solisCtx.chatOpenedOnce=true; clearSolisBadge(); hideSolisGreeting(); }
 function closeSolis(){ document.getElementById('solisWindow').classList.remove('open'); document.getElementById('solisMinibar').classList.add('hidden'); }
 function minimizeSolis(){ document.getElementById('solisWindow').classList.remove('open'); document.getElementById('solisMinibar').classList.remove('hidden'); }
 function restoreSolis(){ openSolis(); }
