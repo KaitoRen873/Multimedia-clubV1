@@ -1358,14 +1358,30 @@ function renderSocialLinks(){
 /* ============================================================
    BACKGROUND MUSIC
    ------------------------------------------------------------
+   A 5-track playlist. Supply the actual mp3 files yourself in
+   assets/ — audio can't be generated here — named exactly:
+     blue-sky.mp3, warm-nostalgia.mp3, sunset-dream.mp3,
+     ambient-technology.mp3, digital-world.mp3
+   Each track retints the site's accent color while it's actually
+   playing (see the [data-music-theme] rules in the CSS), and the
+   theme clears back to normal the moment playback pauses or stops.
+
    Browsers block audio with sound from playing until the visitor
    has interacted with the page at least once — this waits for that
    first click/keypress before ever attempting to play, and only
-   attempts it at all if the visitor had music on last time. If
-   assets/background-music.mp3 is missing, the control disables
-   itself instead of looking broken.
+   attempts it at all if the visitor had music on last time.
    ============================================================ */
+const MUSIC_TRACKS = [
+  { file:'blue-sky.mp3',           name:'Blue Sky',           theme:'blue-sky' },
+  { file:'warm-nostalgia.mp3',     name:'Warm Nostalgia',     theme:'warm-nostalgia' },
+  { file:'sunset-dream.mp3',       name:'Sunset Dream',       theme:'sunset-dream' },
+  { file:'ambient-technology.mp3', name:'Ambient Technology', theme:'ambient-technology' },
+  { file:'digital-world.mp3',      name:'Digital World',      theme:'digital-world' },
+];
 let musicPrimed = false;
+let currentTrackIndex = 0;
+let musicFailCount = 0;
+
 function initMusicPlayer(){
   const audio = document.getElementById('bgMusic');
   const toggleBtn = document.getElementById('musicToggleBtn');
@@ -1378,10 +1394,14 @@ function initMusicPlayer(){
   slider.value = savedVol;
   updateMuteIcon(savedVol === 0);
 
-  audio.addEventListener('error', ()=>{
-    toggleBtn.disabled = true;
-    toggleBtn.title = 'No music file found — add assets/background-music.mp3 to enable this';
-  });
+  const savedIndexRaw = parseInt(localStorage.getItem('musicTrackIndex'), 10);
+  currentTrackIndex = (isNaN(savedIndexRaw) || savedIndexRaw < 0 || savedIndexRaw >= MUSIC_TRACKS.length) ? 0 : savedIndexRaw;
+  document.getElementById('musicTrackName').textContent = MUSIC_TRACKS[currentTrackIndex].name;
+
+  audio.addEventListener('error', handleTrackError);
+  audio.addEventListener('timeupdate', updateTrackTimeUI);
+  audio.addEventListener('loadedmetadata', updateTrackTimeUI);
+  audio.addEventListener('ended', ()=> nextTrack());
 
   const wantsMusic = localStorage.getItem('musicEnabled') === 'true';
   updateToggleUI(false); // never show as "playing" before it actually starts
@@ -1390,13 +1410,108 @@ function initMusicPlayer(){
     if(musicPrimed) return;
     musicPrimed = true;
     if(wantsMusic && !toggleBtn.disabled){
-      audio.play().then(()=> updateToggleUI(true)).catch(()=> updateToggleUI(false));
+      loadTrack(currentTrackIndex, true);
     }
     document.removeEventListener('click', primeAndPlay);
     document.removeEventListener('keydown', primeAndPlay);
   }
   document.addEventListener('click', primeAndPlay, { once:true });
   document.addEventListener('keydown', primeAndPlay, { once:true });
+}
+
+function toggleMusicPanel(){
+  const card = document.getElementById('musicCard');
+  const fab = document.getElementById('musicFab');
+  const opening = !card.classList.contains('open');
+  card.classList.toggle('open', opening);
+  fab.setAttribute('aria-expanded', opening ? 'true' : 'false');
+  if(opening) document.getElementById('musicToggleBtn')?.focus();
+}
+
+function loadTrack(index, autoplay){
+  const audio = document.getElementById('bgMusic');
+  const source = document.getElementById('bgMusicSource');
+  const toggleBtn = document.getElementById('musicToggleBtn');
+  if(!audio || !source || toggleBtn.disabled) return;
+
+  currentTrackIndex = ((index % MUSIC_TRACKS.length) + MUSIC_TRACKS.length) % MUSIC_TRACKS.length;
+  const track = MUSIC_TRACKS[currentTrackIndex];
+  source.src = `assets/${track.file}`;
+  audio.load();
+  document.getElementById('musicTrackName').textContent = track.name;
+  try{ localStorage.setItem('musicTrackIndex', currentTrackIndex); }catch(e){}
+
+  if(autoplay){
+    audio.play().then(()=>{
+      musicFailCount = 0;
+      localStorage.setItem('musicEnabled','true');
+      updateToggleUI(true);
+      applyMusicTheme(track.theme);
+    }).catch(()=>{
+      // Don't treat a play() rejection here as "this track is broken" —
+      // genuine load failures are reported through the audio element's
+      // own 'error' event below, which is what actually advances to the
+      // next track. A play() rejection on its own is usually just a
+      // rapid track change interrupting an in-flight request
+      // (AbortError), not a real failure, so it shouldn't also count
+      // toward musicFailCount or skip a track — doing both was the bug.
+      updateToggleUI(false);
+    });
+  } else {
+    clearMusicTheme();
+  }
+}
+function handleTrackError(){
+  musicFailCount++;
+  updateToggleUI(false);
+  clearMusicTheme();
+  const toggleBtn = document.getElementById('musicToggleBtn');
+  if(musicFailCount >= MUSIC_TRACKS.length){
+    // Every track has failed — genuinely nothing to play, so stop
+    // trying and say why instead of looping forever.
+    toggleBtn.disabled = true;
+    toggleBtn.title = 'No music files found — add tracks to assets/ to enable this (see README)';
+    document.getElementById('musicTrackName').textContent = 'No music available';
+  } else {
+    // This one track is missing/broken — skip to the next rather
+    // than disabling the whole player over one file.
+    loadTrack(currentTrackIndex + 1, true);
+  }
+}
+function nextTrack(){
+  const wasPlaying = !document.getElementById('bgMusic').paused;
+  loadTrack(currentTrackIndex + 1, wasPlaying);
+}
+function prevTrack(){
+  const wasPlaying = !document.getElementById('bgMusic').paused;
+  loadTrack(currentTrackIndex - 1, wasPlaying);
+}
+function applyMusicTheme(themeKey){
+  document.documentElement.setAttribute('data-music-theme', themeKey);
+}
+function clearMusicTheme(){
+  document.documentElement.removeAttribute('data-music-theme');
+}
+function formatTime(seconds){
+  if(!isFinite(seconds) || seconds < 0) return '0:00';
+  const m = Math.floor(seconds/60);
+  const s = Math.floor(seconds%60).toString().padStart(2,'0');
+  return `${m}:${s}`;
+}
+function updateTrackTimeUI(){
+  const audio = document.getElementById('bgMusic');
+  const seek = document.getElementById('musicSeekSlider');
+  const timeEl = document.getElementById('musicTrackTime');
+  if(!audio || !seek || !timeEl) return;
+  if(isFinite(audio.duration) && audio.duration > 0){
+    seek.value = (audio.currentTime / audio.duration) * 1000;
+  }
+  timeEl.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+}
+function seekMusic(val){
+  const audio = document.getElementById('bgMusic');
+  if(!audio || !isFinite(audio.duration) || audio.duration <= 0) return;
+  audio.currentTime = (val/1000) * audio.duration;
 }
 function updateToggleUI(playing){
   const btn = document.getElementById('musicToggleBtn');
@@ -1419,17 +1534,26 @@ function toggleMusic(){
   if(!audio || btn.disabled) return;
   musicPrimed = true; // this click itself counts as the interaction
   if(audio.paused){
+    if(!audio.currentSrc){
+      loadTrack(currentTrackIndex, true);
+      return;
+    }
     audio.play().then(()=>{
+      musicFailCount = 0;
       localStorage.setItem('musicEnabled','true');
       updateToggleUI(true);
+      applyMusicTheme(MUSIC_TRACKS[currentTrackIndex].theme);
     }).catch(()=>{
-      btn.disabled = true;
-      btn.title = 'Music couldn\'t start — check that assets/background-music.mp3 exists';
+      // See the matching comment in loadTrack() — the native 'error'
+      // listener is what actually detects and responds to a broken
+      // file; this just reflects the paused state in the UI.
+      updateToggleUI(false);
     });
   } else {
     audio.pause();
     localStorage.setItem('musicEnabled','false');
     updateToggleUI(false);
+    clearMusicTheme();
   }
 }
 function setMusicVolume(v){
@@ -1453,6 +1577,7 @@ function toggleMusicMute(){
     localStorage.setItem('musicVolume', 0.4);
   }
 }
+
 function renderNotifications(){
   const panel = document.getElementById('notifPanel');
   document.getElementById('notifBadge').style.display = notifications.length ? 'flex' : 'none';
