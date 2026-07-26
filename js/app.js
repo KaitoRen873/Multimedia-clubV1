@@ -1311,6 +1311,7 @@ function renderAdminActivity(rows){
    STATIC UI (theme, notifications, scroll reveal)
    ============================================================ */
 function wireStaticControls(){
+  initMusicPlayer();
   document.getElementById('themeSwitch').addEventListener('click', ()=>{
     state.theme = state.theme==='dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', state.theme);
@@ -1352,6 +1353,105 @@ function renderSocialLinks(){
     .filter(key => SOCIAL_LINKS[key] && SOCIAL_LINKS[key].trim())
     .map(key => `<a href="${escapeHtml(SOCIAL_LINKS[key].trim())}" target="_blank" rel="noopener noreferrer" aria-label="${SOCIAL_LABELS[key]}" title="${SOCIAL_LABELS[key]}"><svg viewBox="0 0 24 24" fill="none">${SOCIAL_ICONS[key]}</svg></a>`);
   row.innerHTML = links.join('');
+}
+
+/* ============================================================
+   BACKGROUND MUSIC
+   ------------------------------------------------------------
+   Browsers block audio with sound from playing until the visitor
+   has interacted with the page at least once — this waits for that
+   first click/keypress before ever attempting to play, and only
+   attempts it at all if the visitor had music on last time. If
+   assets/background-music.mp3 is missing, the control disables
+   itself instead of looking broken.
+   ============================================================ */
+let musicPrimed = false;
+function initMusicPlayer(){
+  const audio = document.getElementById('bgMusic');
+  const toggleBtn = document.getElementById('musicToggleBtn');
+  const slider = document.getElementById('musicVolumeSlider');
+  if(!audio || !toggleBtn || !slider) return;
+
+  const savedVolRaw = parseFloat(localStorage.getItem('musicVolume'));
+  const savedVol = isNaN(savedVolRaw) ? 0.4 : Math.min(1, Math.max(0, savedVolRaw));
+  audio.volume = savedVol;
+  slider.value = savedVol;
+  updateMuteIcon(savedVol === 0);
+
+  audio.addEventListener('error', ()=>{
+    toggleBtn.disabled = true;
+    toggleBtn.title = 'No music file found — add assets/background-music.mp3 to enable this';
+  });
+
+  const wantsMusic = localStorage.getItem('musicEnabled') === 'true';
+  updateToggleUI(false); // never show as "playing" before it actually starts
+
+  function primeAndPlay(){
+    if(musicPrimed) return;
+    musicPrimed = true;
+    if(wantsMusic && !toggleBtn.disabled){
+      audio.play().then(()=> updateToggleUI(true)).catch(()=> updateToggleUI(false));
+    }
+    document.removeEventListener('click', primeAndPlay);
+    document.removeEventListener('keydown', primeAndPlay);
+  }
+  document.addEventListener('click', primeAndPlay, { once:true });
+  document.addEventListener('keydown', primeAndPlay, { once:true });
+}
+function updateToggleUI(playing){
+  const btn = document.getElementById('musicToggleBtn');
+  const playIcon = document.getElementById('musicPlayIcon');
+  const pauseIcon = document.getElementById('musicPauseIcon');
+  if(!btn) return;
+  btn.setAttribute('aria-pressed', playing ? 'true' : 'false');
+  btn.title = playing ? 'Pause background music' : 'Play background music';
+  btn.setAttribute('aria-label', btn.title);
+  playIcon?.classList.toggle('hidden', playing);
+  pauseIcon?.classList.toggle('hidden', !playing);
+}
+function updateMuteIcon(muted){
+  const btn = document.getElementById('musicMuteBtn');
+  if(btn) btn.textContent = muted ? '🔇' : '🔊';
+}
+function toggleMusic(){
+  const audio = document.getElementById('bgMusic');
+  const btn = document.getElementById('musicToggleBtn');
+  if(!audio || btn.disabled) return;
+  musicPrimed = true; // this click itself counts as the interaction
+  if(audio.paused){
+    audio.play().then(()=>{
+      localStorage.setItem('musicEnabled','true');
+      updateToggleUI(true);
+    }).catch(()=>{
+      btn.disabled = true;
+      btn.title = 'Music couldn\'t start — check that assets/background-music.mp3 exists';
+    });
+  } else {
+    audio.pause();
+    localStorage.setItem('musicEnabled','false');
+    updateToggleUI(false);
+  }
+}
+function setMusicVolume(v){
+  const audio = document.getElementById('bgMusic');
+  if(!audio) return;
+  const vol = parseFloat(v);
+  audio.volume = vol;
+  audio.muted = vol === 0;
+  localStorage.setItem('musicVolume', vol);
+  updateMuteIcon(vol === 0);
+}
+function toggleMusicMute(){
+  const audio = document.getElementById('bgMusic');
+  const slider = document.getElementById('musicVolumeSlider');
+  if(!audio) return;
+  audio.muted = !audio.muted;
+  updateMuteIcon(audio.muted);
+  if(!audio.muted && audio.volume === 0){
+    audio.volume = 0.4;
+    if(slider) slider.value = 0.4;
+    localStorage.setItem('musicVolume', 0.4);
+  }
 }
 function renderNotifications(){
   const panel = document.getElementById('notifPanel');
@@ -1480,6 +1580,9 @@ const solisIntents = [
   { id:'capabilities', kw:['help','what can you do','commands'],
     respond:()=>({ text:'I can help you find announcements, events, and news, and — if you\'re an admin — manage members. Just ask naturally.',
       quickActions:[{label:'Show announcements', style:'safe', action:'go_announcements'},{label:'Show events', style:'safe', action:'go_events'}] }) },
+  { id:'tour', kw:['tour','walkthrough','show me around','guide me'],
+    respond:()=>({ text:"Happy to! I'll walk you through the main sections of the site one at a time — you can end it anytime.",
+      quickActions:[{label:'Start the tour', style:'safe', action:'start_tour'}] }) },
   { id:'thanks', kw:['thank','thanks'], respond:()=>({ text:"Anytime!" }) },
 ];
 function scoreIntents(norm){
@@ -1583,6 +1686,19 @@ function shouldShowSolisGreetingToday(){
 
 function showSolisGreeting(){
   if(solisGreetingShown || solisCtx.chatOpenedOnce) return;
+
+  // First-ever visitor who hasn't seen the tour offer yet: ask about
+  // the tour instead of the regular rotating greeting. This only
+  // happens once, ever, regardless of their answer — "Maybe later"
+  // doesn't nag again on a future visit; they can still start the
+  // tour anytime by asking Solis for one.
+  let tourOffered = false;
+  try{ tourOffered = localStorage.getItem('tourOffered') === 'true'; }catch(e){ tourOffered = true; }
+  if(!tourOffered){
+    showTourOfferBubble();
+    return;
+  }
+
   if(!shouldShowSolisGreetingToday()) return;
   solisGreetingShown = true;
   const bubble = document.getElementById('solisGreetBubble');
@@ -1592,16 +1708,25 @@ function showSolisGreeting(){
   bubble.classList.add('show');
   setTimeout(hideSolisGreeting, 11000);
 }
-// Show right as the intro loader actually finishes clearing the
-// screen, not on a guessed delay — previously this fired at a fixed
-// 1.8s while the full-screen loader was still covering everything
-// for ~4.9s, silently burning through a third of its visible window
-// behind it. A short fallback timer covers browsers/edge cases where
-// the loader event never fires for any reason.
-window.addEventListener('introLoaderDone', showSolisGreeting, { once:true });
-setTimeout(showSolisGreeting, 6000);
+
+// Sequencing: loader finishes → changelog popup first (if there's
+// something unseen to show) → then the tour offer or regular
+// greeting. Staggering these avoids two popups competing for
+// attention the moment the site becomes visible. A fallback timer
+// covers browsers/edge cases where the loader-complete event never
+// fires for any reason.
+let introSequenceStarted = false;
+function runIntroSequence(){
+  if(introSequenceStarted) return;
+  introSequenceStarted = true;
+  initChangelog(); // calls showSolisGreeting() itself once resolved
+}
+window.addEventListener('introLoaderDone', runIntroSequence, { once:true });
+setTimeout(runIntroSequence, 6000);
+
 function hideSolisGreeting(){
   document.getElementById('solisGreetBubble')?.classList.remove('show');
+  document.getElementById('solisGreetActions')?.classList.add('hidden');
 }
 function openSolisFromGreeting(){
   hideSolisGreeting();
@@ -1612,6 +1737,153 @@ function dismissSolisGreeting(event){
   hideSolisGreeting();
 }
 
+/* ---------- tour offer (shown once, in place of the regular greeting) ---------- */
+function showTourOfferBubble(){
+  const bubble = document.getElementById('solisGreetBubble');
+  const textEl = document.getElementById('solisGreetText');
+  const actions = document.getElementById('solisGreetActions');
+  if(!bubble || !textEl || !actions) return;
+  textEl.textContent = "👋 Welcome to the Multimedia Club! Want a quick tour of the website?";
+  actions.classList.remove('hidden');
+  bubble.classList.add('show');
+  try{ localStorage.setItem('tourOffered', 'true'); }catch(e){}
+}
+function acceptTourOffer(event){
+  event.stopPropagation();
+  hideSolisGreeting();
+  startTour();
+}
+function declineTourOffer(event){
+  event.stopPropagation();
+  hideSolisGreeting();
+}
+
+/* ============================================================
+   CHANGELOG / "WHAT'S NEW"
+   ============================================================ */
+const CHANGELOG_VERSION = 'v1.4';
+const CHANGELOG_DATA = {
+  new: [
+    "A background music player, tucked in the bottom-left corner",
+    "A guided first-visit tour of the site, offered by Solis",
+    "This changelog window, so future updates don't sneak by unnoticed",
+  ],
+  improved: [
+    "Solis's welcome message now mentions real pinned announcements or the next event instead of a generic line",
+    "Smoother, more efficient animations across the whole site",
+    "A full pass on keyboard navigation and focus visibility",
+  ],
+  fixed: [
+    "Fixed Solis's greeting sometimes appearing hidden behind the loading screen",
+  ],
+};
+function initChangelog(){
+  let seen = null;
+  try{ seen = localStorage.getItem('changelogSeenVersion'); }catch(e){}
+  if(seen === CHANGELOG_VERSION){ showSolisGreeting(); return; }
+  renderChangelogBody();
+  document.getElementById('changelogBackdrop')?.classList.add('open');
+}
+function renderChangelogBody(){
+  const body = document.getElementById('changelogBody');
+  if(!body) return;
+  const sections = [
+    { label:'✨ New', items: CHANGELOG_DATA.new },
+    { label:'⚡ Improvements', items: CHANGELOG_DATA.improved },
+    { label:'🐛 Fixes', items: CHANGELOG_DATA.fixed },
+  ];
+  body.innerHTML = sections.filter(s => s.items.length).map(s => `
+    <h4>${s.label}</h4>
+    <ul>${s.items.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>
+  `).join('');
+}
+function closeChangelog(dontShowAgain){
+  document.getElementById('changelogBackdrop')?.classList.remove('open');
+  if(dontShowAgain){
+    try{ localStorage.setItem('changelogSeenVersion', CHANGELOG_VERSION); }catch(e){}
+  }
+  showSolisGreeting();
+}
+
+/* ============================================================
+   GUIDED TOUR
+   ============================================================ */
+const TOUR_STEPS = [
+  { selector:'#announcements', title:'Announcements', text:"Pinned and recent club announcements live here — you can search or filter by category." },
+  { selector:'#events', title:'Events', text:"See what's coming up, with a live countdown to the next one." },
+  { selector:'#news', title:'News', text:"Stories and updates from around the club." },
+  { selector:'#collaborations', title:'Collaborations', text:"Partnerships with other clubs, plus photos and videos shared by members." },
+  { selector:'#event-requests', title:'For other clubs', text:"If you're from another club, you can request to have your event posted here — no account needed." },
+  { selector:'#solisBtn', title:'Ask Solis', text:"I'm always here in the corner if you have questions or want help finding something." },
+];
+let tourStepIndex = 0;
+let tourResizeHandler = null;
+
+function startTour(){
+  tourStepIndex = 0;
+  document.getElementById('tourOverlay')?.classList.remove('hidden');
+  requestAnimationFrame(()=> document.getElementById('tourOverlay')?.classList.add('open'));
+  document.addEventListener('keydown', tourKeydownHandler);
+  tourResizeHandler = ()=> positionTourStep(false);
+  window.addEventListener('resize', tourResizeHandler);
+  showTourStep(0);
+}
+function tourKeydownHandler(e){
+  if(e.key === 'Escape') endTour();
+}
+function showTourStep(index){
+  const step = TOUR_STEPS.find((s, i) => i >= index && document.querySelector(s.selector));
+  const foundIndex = TOUR_STEPS.findIndex(s => s === step);
+  if(!step){ endTour(); return; }
+  tourStepIndex = foundIndex;
+
+  document.getElementById('tourStepLabel').textContent = `Step ${tourStepIndex+1} of ${TOUR_STEPS.length}`;
+  document.getElementById('tourTipTitle').textContent = step.title;
+  document.getElementById('tourTipText').textContent = step.text;
+  document.getElementById('tourNextBtn').textContent = tourStepIndex === TOUR_STEPS.length-1 ? 'Finish' : 'Next';
+
+  const target = document.querySelector(step.selector);
+  target.scrollIntoView({ behavior:'smooth', block:'center' });
+  setTimeout(()=> positionTourStep(true), 380);
+}
+function positionTourStep(focusButton){
+  const step = TOUR_STEPS[tourStepIndex];
+  if(!step) return;
+  const target = document.querySelector(step.selector);
+  const highlight = document.getElementById('tourHighlight');
+  const tip = document.getElementById('tourTip');
+  if(!target || !highlight || !tip) return;
+
+  const rect = target.getBoundingClientRect();
+  const pad = 8;
+  highlight.style.top = (rect.top - pad) + 'px';
+  highlight.style.left = (rect.left - pad) + 'px';
+  highlight.style.width = (rect.width + pad*2) + 'px';
+  highlight.style.height = (rect.height + pad*2) + 'px';
+
+  const tipHeight = tip.offsetHeight || 160;
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const top = spaceBelow > tipHeight + 24
+    ? rect.bottom + 16
+    : Math.max(16, rect.top - tipHeight - 16);
+  const left = Math.min(window.innerWidth - tip.offsetWidth - 16, Math.max(16, rect.left));
+  tip.style.top = top + 'px';
+  tip.style.left = left + 'px';
+
+  if(focusButton) document.getElementById('tourNextBtn')?.focus();
+}
+function advanceTour(){
+  if(tourStepIndex >= TOUR_STEPS.length - 1){ endTour(true); return; }
+  showTourStep(tourStepIndex + 1);
+}
+function endTour(completed){
+  document.getElementById('tourOverlay')?.classList.remove('open');
+  setTimeout(()=> document.getElementById('tourOverlay')?.classList.add('hidden'), 300);
+  document.removeEventListener('keydown', tourKeydownHandler);
+  if(tourResizeHandler) window.removeEventListener('resize', tourResizeHandler);
+  try{ localStorage.setItem('tourCompleted', 'true'); }catch(e){}
+}
+
 async function handleQuickAction(action, qaWrap){
   if(qaWrap) Array.from(qaWrap.children).forEach(b=>b.disabled=true);
   if(action==='go_announcements'){ scrollToId('announcements'); return; }
@@ -1619,6 +1891,7 @@ async function handleQuickAction(action, qaWrap){
   if(action==='go_news'){ scrollToId('news'); return; }
   if(action==='go_collaborations'){ scrollToId('collaborations'); return; }
   if(action==='go_event_requests'){ scrollToId('event-requests'); return; }
+  if(action==='start_tour'){ closeSolis(); startTour(); return; }
   if(action==='go_dashboard'){ scrollToId('dashboard'); return; }
   if(action==='go_admin'){ scrollToId('admin'); return; }
   if(action==='cancel_admin_action'){ solisCtx.pendingConfirm=null; addBotMsg('Okay, no changes made.'); return; }
