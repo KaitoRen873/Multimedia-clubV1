@@ -120,19 +120,39 @@ supabase/functions/delete-user/     optional edge function for full account dele
 
 ## Background music
 
-There's a floating player in the bottom-left corner (play/pause, mute, volume
-slider) — but **no audio file is included**, since one couldn't be generated here.
-To enable it:
+There's a floating player in the bottom-left corner — click the note icon to
+expand it. It shows the current track name, a seekable progress bar, play/pause,
+previous/next, mute, and a volume slider.
 
-1. Add your own royalty-free track as `assets/background-music.mp3`.
-2. That's it — the player detects the file automatically. If it's missing, the
-   play button disables itself with an explanatory tooltip instead of looking
-   broken.
+**No audio files are included**, since they couldn't be generated here. To
+enable it, add exactly these five files to `assets/`:
+
+```
+assets/blue-sky.mp3
+assets/warm-nostalgia.mp3
+assets/sunset-dream.mp3
+assets/ambient-technology.mp3
+assets/digital-world.mp3
+```
+
+The filenames matter — the player looks for them by these exact names. Any
+royalty-free tracks work; rename them to match.
+
+**Each track retints the site's accent color while it's playing** — a
+different mood per track (cool blue for Blue Sky, warm amber for Warm
+Nostalgia, and so on) — and the theme reverts to the normal gold accent the
+moment playback is paused or stopped. To change the colors, edit the
+`[data-music-theme="..."]` rules in `index.html`.
+
+If a file is missing or fails to load, the player automatically skips to the
+next one rather than getting stuck; if all five are missing, it disables
+itself with an explanatory tooltip instead of looking broken.
 
 It follows browser autoplay rules correctly: music never plays with sound until
 the visitor has clicked or pressed a key somewhere on the page at least once, and
 only attempts to resume automatically if they had it turned on during a previous
-visit (remembered via `localStorage`).
+visit (remembered via `localStorage`, along with volume and which track was
+playing).
 
 ## Guided tour + changelog
 
