@@ -1809,11 +1809,11 @@ function closeChangelog(dontShowAgain){
    GUIDED TOUR
    ============================================================ */
 const TOUR_STEPS = [
-  { selector:'#announcements', title:'Announcements', text:"Pinned and recent club announcements live here — you can search or filter by category." },
-  { selector:'#events', title:'Events', text:"See what's coming up, with a live countdown to the next one." },
-  { selector:'#news', title:'News', text:"Stories and updates from around the club." },
-  { selector:'#collaborations', title:'Collaborations', text:"Partnerships with other clubs, plus photos and videos shared by members." },
-  { selector:'#event-requests', title:'For other clubs', text:"If you're from another club, you can request to have your event posted here — no account needed." },
+  { selector:'#announcements .section-head', title:'Announcements', text:"Pinned and recent club announcements live here — you can search or filter by category." },
+  { selector:'#events .section-head', title:'Events', text:"See what's coming up, with a live countdown to the next one." },
+  { selector:'#news .section-head', title:'News', text:"Stories and updates from around the club." },
+  { selector:'#collaborations .section-head', title:'Collaborations', text:"Partnerships with other clubs, plus photos and videos shared by members." },
+  { selector:'#event-requests .section-head', title:'For other clubs', text:"If you're from another club, you can request to have your event posted here — no account needed." },
   { selector:'#solisBtn', title:'Ask Solis', text:"I'm always here in the corner if you have questions or want help finding something." },
 ];
 let tourStepIndex = 0;
@@ -1844,7 +1844,38 @@ function showTourStep(index){
 
   const target = document.querySelector(step.selector);
   target.scrollIntoView({ behavior:'smooth', block:'center' });
-  setTimeout(()=> positionTourStep(true), 380);
+  waitForScrollToSettle(target, true);
+}
+// A fixed delay here can't know how far a given step needs to scroll —
+// a short hop and a scroll across the whole page don't take the same
+// amount of time, so a flat timeout either fires too early (measuring
+// a mid-scroll position, which is what made the highlight look
+// inaccurate) or wastes time waiting longer than necessary. This
+// instead polls the target's actual position each frame and only
+// measures once it's stopped moving, with a hard cap so it can never
+// hang indefinitely.
+function waitForScrollToSettle(target, focusButton){
+  let lastTop = null;
+  let stableFrames = 0;
+  const maxWaitMs = 1500;
+  const startTime = performance.now();
+
+  function check(){
+    const top = target.getBoundingClientRect().top;
+    if(lastTop !== null && Math.abs(top - lastTop) < 0.5){
+      stableFrames++;
+    } else {
+      stableFrames = 0;
+    }
+    lastTop = top;
+
+    if(stableFrames >= 3 || performance.now() - startTime > maxWaitMs){
+      positionTourStep(focusButton);
+    } else {
+      requestAnimationFrame(check);
+    }
+  }
+  requestAnimationFrame(check);
 }
 function positionTourStep(focusButton){
   const step = TOUR_STEPS[tourStepIndex];
