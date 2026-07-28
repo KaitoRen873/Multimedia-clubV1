@@ -596,41 +596,84 @@ tr:last-child td{ border:none; }
 }
 
 /* ============ MUSIC PLAYER ============ */
-.music-player{
+.music-fab{
   position:fixed; bottom:24px; left:24px; z-index:400;
-  display:flex; align-items:center; gap:0; border-radius:999px;
-  padding:4px; overflow:hidden;
-  transition:padding .35s var(--ease);
+  width:50px; height:50px; border-radius:50%; border:none; cursor:pointer;
+  background:var(--panel-hi); color:var(--gold);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .3s var(--ease);
 }
-.music-toggle{
-  width:46px; height:46px; border-radius:50%; flex-shrink:0; border:none; cursor:pointer;
-  background:var(--panel-hi); color:var(--gold); display:flex; align-items:center; justify-content:center;
-  transition:transform .3s var(--ease), background .3s var(--ease);
+.music-fab:hover{ transform:scale(1.06); }
+.music-fab:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+.music-fab[aria-expanded="true"]{ background:linear-gradient(120deg,var(--gold-deep),var(--gold)); color:#151208; }
+
+.music-card{
+  position:fixed; bottom:24px; left:24px; z-index:401; width:300px; max-width:calc(100vw - 32px);
+  padding:16px; transform:translateY(12px) scale(.96); opacity:0; pointer-events:none;
+  transition:transform .3s var(--ease), opacity .3s var(--ease);
 }
-.music-toggle:hover{ transform:scale(1.06); }
-.music-toggle:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
-.music-toggle[aria-pressed="true"]{ background:linear-gradient(120deg,var(--gold-deep),var(--gold)); color:#151208; }
-.music-toggle:disabled{ opacity:.4; cursor:not-allowed; }
-.music-panel{
-  display:flex; align-items:center; gap:8px; max-width:0; overflow:hidden; opacity:0;
-  transition:max-width .35s var(--ease), opacity .3s var(--ease), padding .35s var(--ease);
+.music-card.open{ transform:translateY(0) scale(1); opacity:1; pointer-events:auto; }
+.music-card-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.music-track-name{ font-size:13.5px; font-weight:600; color:var(--text-0); line-height:1.3; }
+.music-track-time{ font-size:10.5px; font-family:var(--font-mono); color:var(--text-2); margin-top:3px; }
+.music-seek{ width:100%; accent-color:var(--gold); cursor:pointer; margin-bottom:12px; }
+.music-seek:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+.music-controls-row{ display:flex; align-items:center; gap:6px; }
+.music-ctrl-btn{
+  width:32px; height:32px; border-radius:50%; border:none; background:var(--panel-hi); color:var(--text-1);
+  cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  transition:transform .25s var(--ease), background .25s var(--ease), color .25s var(--ease);
 }
-.music-player:hover .music-panel,
-.music-player:focus-within .music-panel{ max-width:160px; opacity:1; padding-right:12px; }
+.music-ctrl-btn:hover{ transform:translateY(-1px); color:var(--gold); }
+.music-ctrl-btn:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+.music-ctrl-btn.primary{
+  width:38px; height:38px; background:linear-gradient(120deg,var(--gold-deep),var(--gold)); color:#151208;
+}
+.music-ctrl-btn:disabled{ opacity:.4; cursor:not-allowed; }
+
+.music-track-index{ margin-top:14px; padding-top:12px; border-top:1px solid var(--panel-border); display:flex; flex-direction:column; gap:2px; }
+.music-track-row{
+  display:flex; align-items:center; gap:9px; padding:7px 8px; border-radius:9px; border:none; background:none;
+  width:100%; text-align:left; cursor:pointer; font-family:inherit; color:var(--text-1); font-size:12.5px;
+  transition:background .2s var(--ease), color .2s var(--ease);
+}
+.music-track-row:hover{ background:var(--panel-hi); color:var(--text-0); }
+.music-track-row:focus-visible{ outline:2px solid var(--gold); outline-offset:-2px; }
+.music-track-row .n{ width:14px; font-family:var(--font-mono); font-size:10.5px; color:var(--text-2); flex-shrink:0; }
+.music-track-row.active{ color:var(--gold); font-weight:600; }
+.music-track-row.active .n{ color:var(--gold); }
+.music-track-row .eq{ display:flex; align-items:flex-end; gap:1.5px; width:12px; height:11px; flex-shrink:0; }
+.music-track-row .eq span{ width:2.5px; background:var(--gold); border-radius:1px; height:3px; }
+.music-track-row.playing .eq span{ animation:eqBounce 1s ease-in-out infinite; }
+.music-track-row.playing .eq span:nth-child(2){ animation-delay:.2s; }
+.music-track-row.playing .eq span:nth-child(3){ animation-delay:.4s; }
+@keyframes eqBounce{ 0%,100%{ height:3px; } 50%{ height:11px; } }
+@media (prefers-reduced-motion:reduce){ .music-track-row.playing .eq span{ animation:none; height:8px; } }
+.music-vol-group{ display:flex; align-items:center; gap:6px; margin-left:auto; }
 .music-mute{
-  width:30px; height:30px; border-radius:50%; border:none; background:transparent; color:var(--text-1);
-  cursor:pointer; flex-shrink:0; font-size:14px; display:flex; align-items:center; justify-content:center;
+  width:26px; height:26px; border-radius:50%; border:none; background:transparent; color:var(--text-1);
+  cursor:pointer; flex-shrink:0; font-size:13px; display:flex; align-items:center; justify-content:center;
 }
 .music-mute:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
-.music-slider{
-  width:90px; accent-color:var(--gold); cursor:pointer;
-}
+.music-slider{ width:64px; accent-color:var(--gold); cursor:pointer; }
 .music-slider:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
 @media (max-width:640px){
-  .music-player{ bottom:16px; left:16px; }
-  .music-player:hover .music-panel, .music-player:focus-within .music-panel{ max-width:130px; }
-  .music-slider{ width:64px; }
+  .music-fab, .music-card{ bottom:16px; left:16px; }
+  .music-slider{ width:48px; }
 }
+
+/* ---- per-track color themes ----
+   Applied to <html> only while that track is actually playing; the
+   accent variables (used everywhere via var(--gold) etc.) retint
+   accordingly, and clear back to the normal gold theme the moment
+   playback pauses or stops. Structural colors (backgrounds, text)
+   are untouched — only the accent shifts, so it stays readable in
+   both dark and light mode. */
+html[data-music-theme="blue-sky"]{ --gold-deep:#1E88E5; --gold:#4FC3F7; --gold-pale:#B3E5FC; }
+html[data-music-theme="warm-nostalgia"]{ --gold-deep:#C2703D; --gold:#E8A659; --gold-pale:#F5D6A0; }
+html[data-music-theme="sunset-dream"]{ --gold-deep:#E85D75; --gold:#FF9166; --gold-pale:#FFD3A5; }
+html[data-music-theme="ambient-technology"]{ --gold-deep:#00838F; --gold:#26C6DA; --gold-pale:#80DEEA; }
+html[data-music-theme="digital-world"]{ --gold-deep:#7B2FF7; --gold:#B388FF; --gold-pale:#E0C3FC; }
 
 /* ============ FOOTER ============ */
 footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-top:60px; }
@@ -1324,23 +1367,46 @@ footer{ padding:60px 0 40px; border-top:1px solid var(--panel-border); margin-to
 </button>
 
 <!-- BACKGROUND MUSIC PLAYER -->
-<!-- Supply your own royalty-free track at assets/background-music.mp3 —
-     none is included, since audio can't be generated here. The player
-     detects a missing/broken file and disables itself gracefully
+<!-- Supply your own royalty-free tracks in assets/, named exactly:
+     blue-sky.mp3, warm-nostalgia.mp3, sunset-dream.mp3,
+     ambient-technology.mp3, digital-world.mp3 — none are included,
+     since audio can't be generated here. The player detects
+     missing/broken files and skips or disables itself gracefully
      instead of showing a broken control. -->
-<audio id="bgMusic" loop preload="none">
-  <source src="assets/background-music.mp3" type="audio/mpeg">
+<audio id="bgMusic" preload="none">
+  <source id="bgMusicSource" src="" type="audio/mpeg">
 </audio>
-<div class="music-player glass" id="musicPlayer">
-  <button class="music-toggle" id="musicToggleBtn" onclick="toggleMusic()" aria-label="Play background music" aria-pressed="false" title="Play background music">
-    <svg id="musicPlayIcon" viewBox="0 0 24 24" width="18" height="18"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
-    <svg id="musicPauseIcon" viewBox="0 0 24 24" width="18" height="18" class="hidden"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>
-  </button>
-  <div class="music-panel" id="musicPanel">
-    <button class="music-mute" id="musicMuteBtn" onclick="toggleMusicMute()" aria-label="Mute music" title="Mute">🔊</button>
-    <input type="range" class="music-slider" id="musicVolumeSlider" min="0" max="1" step="0.05" value="0.4"
-      oninput="setMusicVolume(this.value)" aria-label="Music volume" title="Volume">
+<button class="music-fab glass" id="musicFab" onclick="toggleMusicPanel()" aria-label="Open music player" aria-expanded="false">
+  <svg viewBox="0 0 24 24" width="19" height="19"><path d="M9 18V6l10-2v12M9 18a3 3 0 1 1-3-3 3 3 0 0 1 3 3zm10-2a3 3 0 1 1-3-3 3 3 0 0 1 3 3z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+</button>
+<div class="music-card glass" id="musicCard">
+  <div class="music-card-head">
+    <div class="music-track-info">
+      <div class="music-track-name" id="musicTrackName">No track selected</div>
+      <div class="music-track-time" id="musicTrackTime">0:00 / 0:00</div>
+    </div>
+    <button class="icon-btn" style="width:28px;height:28px;" onclick="toggleMusicPanel()" aria-label="Close music player">✕</button>
   </div>
+  <input type="range" class="music-seek" id="musicSeekSlider" min="0" max="1000" value="0"
+    oninput="seekMusic(this.value)" aria-label="Seek through track">
+  <div class="music-controls-row">
+    <button class="music-ctrl-btn" onclick="prevTrack()" aria-label="Previous track" title="Previous track">
+      <svg viewBox="0 0 24 24" width="15" height="15"><path d="M6 5v14M18 5l-10 7 10 7z" fill="currentColor"/></svg>
+    </button>
+    <button class="music-ctrl-btn primary" id="musicToggleBtn" onclick="toggleMusic()" aria-label="Play background music" aria-pressed="false" title="Play">
+      <svg id="musicPlayIcon" viewBox="0 0 24 24" width="16" height="16"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
+      <svg id="musicPauseIcon" viewBox="0 0 24 24" width="16" height="16" class="hidden"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>
+    </button>
+    <button class="music-ctrl-btn" onclick="nextTrack()" aria-label="Next track" title="Next track">
+      <svg viewBox="0 0 24 24" width="15" height="15"><path d="M18 5v14M6 5l10 7-10 7z" fill="currentColor"/></svg>
+    </button>
+    <div class="music-vol-group">
+      <button class="music-mute" id="musicMuteBtn" onclick="toggleMusicMute()" aria-label="Mute music" title="Mute">🔊</button>
+      <input type="range" class="music-slider" id="musicVolumeSlider" min="0" max="1" step="0.05" value="0.4"
+        oninput="setMusicVolume(this.value)" aria-label="Music volume" title="Volume">
+    </div>
+  </div>
+  <div class="music-track-index" id="musicTrackIndex" role="list" aria-label="Track list"></div>
 </div>
 
 
