@@ -1440,6 +1440,7 @@ function loadTrack(index, autoplay){
   audio.load();
   document.getElementById('musicTrackName').textContent = track.name;
   try{ localStorage.setItem('musicTrackIndex', currentTrackIndex); }catch(e){}
+  renderTrackIndex();
 
   if(autoplay){
     audio.play().then(()=>{
@@ -1460,6 +1461,27 @@ function loadTrack(index, autoplay){
   } else {
     clearMusicTheme();
   }
+}
+// The visible playlist — lets visitors see all five tracks and jump
+// straight to any one, instead of only cycling blindly via prev/next.
+function renderTrackIndex(){
+  const wrap = document.getElementById('musicTrackIndex');
+  if(!wrap) return;
+  const isPlaying = !document.getElementById('bgMusic')?.paused;
+  wrap.innerHTML = MUSIC_TRACKS.map((t, i) => {
+    const active = i === currentTrackIndex;
+    return `
+      <button class="music-track-row ${active ? 'active' : ''} ${active && isPlaying ? 'playing' : ''}"
+        role="listitem" onclick="selectTrack(${i})" aria-current="${active ? 'true' : 'false'}">
+        <span class="n">${String(i+1).padStart(2,'0')}</span>
+        <span style="flex:1;">${escapeHtml(t.name)}</span>
+        <span class="eq"><span></span><span></span><span></span></span>
+      </button>`;
+  }).join('');
+}
+function selectTrack(index){
+  musicPrimed = true; // picking a track from the list is itself a user gesture
+  loadTrack(index, true);
 }
 function handleTrackError(){
   musicFailCount++;
@@ -1523,6 +1545,7 @@ function updateToggleUI(playing){
   btn.setAttribute('aria-label', btn.title);
   playIcon?.classList.toggle('hidden', playing);
   pauseIcon?.classList.toggle('hidden', !playing);
+  renderTrackIndex();
 }
 function updateMuteIcon(muted){
   const btn = document.getElementById('musicMuteBtn');
