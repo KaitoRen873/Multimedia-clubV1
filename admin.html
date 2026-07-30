@@ -302,6 +302,7 @@ const toast = document.getElementById('toast');
 
 let allApplications = [];
 let currentUserEmail = '';
+let currentUserId = '';
 
 function showLoginMsg(type, message){
   loginMsg.className = 'login-msg show ' + type;
@@ -350,6 +351,7 @@ async function enterDashboardIfAdmin(user){
   }
 
   currentUserEmail = profile.email || user.email;
+  currentUserId = user.id;
   whoLabel.textContent = (profile.name || currentUserEmail) + ' · admin';
   loginScreen.classList.add('hidden');
   dashScreen.classList.add('show');
@@ -497,7 +499,11 @@ async function updateStatus(id, newStatus, selectEl){
   selectEl.disabled = true;
   const { error } = await supabaseClient
     .from('applications')
-    .update({ status: newStatus })
+    .update({
+      status: newStatus,
+      reviewed_by: currentUserId || null,
+      reviewed_at: new Date().toISOString()
+    })
     .eq('id', id);
 
   selectEl.disabled = false;
