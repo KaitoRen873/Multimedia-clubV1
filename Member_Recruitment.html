@@ -619,6 +619,12 @@ footer{ background:#000; color:var(--gray-400); padding:36px 0; }
             <span class="err"></span>
           </div>
 
+          <div class="field" id="field-student_id">
+            <label for="student_id">Student ID <span class="req">*</span></label>
+            <input type="text" id="student_id" name="student_id" placeholder="e.g. 2025-00123" autocomplete="off">
+            <span class="err"></span>
+          </div>
+
           <div class="field" id="field-grade_level">
             <label for="grade_level">Grade Level <span class="req">*</span></label>
             <select id="grade_level" name="grade_level">
@@ -628,7 +634,7 @@ footer{ background:#000; color:var(--gray-400); padding:36px 0; }
           </div>
 
           <div class="field" id="field-section">
-            <label for="section">Cluster <span class="req">*</span></label>
+            <label for="section">Section <span class="req">*</span></label>
             <input type="text" id="section" name="section" placeholder="e.g. Rizal">
             <span class="err"></span>
           </div>
@@ -636,6 +642,12 @@ footer{ background:#000; color:var(--gray-400); padding:36px 0; }
           <div class="field" id="field-email">
             <label for="email">Email Address <span class="req">*</span></label>
             <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email">
+            <span class="err"></span>
+          </div>
+
+          <div class="field" id="field-contact_number">
+            <label for="contact_number">Contact Number <span class="opt">(optional)</span></label>
+            <input type="tel" id="contact_number" name="contact_number" placeholder="09XX XXX XXXX" autocomplete="tel">
             <span class="err"></span>
           </div>
 
