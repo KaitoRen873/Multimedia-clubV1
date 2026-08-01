@@ -393,6 +393,20 @@ header{
    FOOTER
    ========================================================= */
 footer{ background:#000; color:var(--gray-400); padding:36px 0; }
+
+.music-toggle-btn{
+  position:fixed; bottom:22px; right:22px; z-index:300;
+  width:50px; height:50px; border-radius:50%; border:1px solid rgba(255,212,0,.35);
+  background:var(--ink-soft); color:var(--yellow); cursor:pointer;
+  display:flex; align-items:center; justify-content:center; font-size:19px;
+  box-shadow:0 8px 24px -8px rgba(0,0,0,.6);
+  transition:transform .3s var(--ease), border-color .3s var(--ease), background .3s var(--ease);
+}
+.music-toggle-btn:hover{ transform:translateY(-2px); border-color:var(--yellow); }
+.music-toggle-btn:focus-visible{ outline:2px solid var(--yellow); outline-offset:3px; }
+.music-toggle-btn[aria-pressed="true"]{ background:var(--yellow); color:var(--ink); }
+.music-toggle-btn:disabled{ opacity:.35; cursor:not-allowed; transform:none; }
+@media (max-width:640px){ .music-toggle-btn{ bottom:16px; right:16px; width:44px; height:44px; font-size:17px; } }
 .footer-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; font-size:.82rem; }
 .footer-row .foot-brand{ color:var(--white); font-family:var(--display); font-weight:600; }
 .footer-row a:hover{ color:var(--yellow); }
@@ -627,9 +641,9 @@ footer{ background:#000; color:var(--gray-400); padding:36px 0; }
             <span class="err"></span>
           </div>
 
-          <div class="field" id="field-cluster">
-            <label for="Cluster">Cluster <span class="req">*</span></label>
-            <input type="text" id="cluster" name="cluster" placeholder="e.g. TECHPRO">
+          <div class="field" id="field-section">
+            <label for="section">Section <span class="req">*</span></label>
+            <input type="text" id="section" name="section" placeholder="e.g. Rizal">
             <span class="err"></span>
           </div>
 
@@ -765,6 +779,28 @@ footer{ background:#000; color:var(--gray-400); padding:36px 0; }
   </div>
 </footer>
 
+<!-- ============================================================
+     BACKGROUND MUSIC — no track added yet.
+     ------------------------------------------------------------
+     TO ADD YOUR MUSIC: put an mp3 file in this project (e.g. next
+     to this HTML file) and set the src below to its filename.
+
+         <source src="YOUR-FILE-NAME.mp3" type="audio/mpeg">
+
+     That's the only change needed — the player below already
+     handles play/pause, remembers the visitor's on/off choice, and
+     starts automatically (as far as browsers allow — see the JS
+     comment near initBgMusic for why it can't start with sound
+     before any click/keypress). Until a real file is added, the
+     button stays visible but disabled instead of erroring.
+     ============================================================ -->
+<audio id="bgMusic" loop preload="none">
+  <source id="bgMusicSource" src="" type="audio/mpeg">
+</audio>
+<button class="music-toggle-btn" id="musicToggleBtn" onclick="toggleBgMusic()" aria-label="Play background music" aria-pressed="false" title="Add a music file to enable this — see the comment above the <audio id=&quot;bgMusic&quot;> tag">
+  <span id="musicToggleIcon">🎵</span>
+</button>
+
 <script>
 /* =========================================================
    SUPABASE CONFIG
@@ -795,6 +831,86 @@ if(isSupabaseConfigured){
 
 /* ---------- Year ---------- */
 document.getElementById('year').textContent = new Date().getFullYear();
+
+/* =========================================================
+   BACKGROUND MUSIC
+   ---------------------------------------------------------
+   Browsers block audio with sound from playing until the
+   visitor has interacted with the page at least once — this
+   waits for that first click/keypress before ever attempting
+   to play, then starts automatically from then on (that's as
+   "automatic" as browsers allow; there's no way to start audio
+   with sound before any interaction at all, on any site).
+   If no file has been added yet (see the comment near the
+   <audio id="bgMusic"> tag above), the button disables itself
+   instead of throwing errors.
+   ========================================================= */
+let musicPrimed = false;
+function initBgMusic(){
+  const audio = document.getElementById('bgMusic');
+  const btn = document.getElementById('musicToggleBtn');
+  const source = document.getElementById('bgMusicSource');
+  if(!audio || !btn || !source) return;
+
+  if(!source.getAttribute('src')){
+    // No music file added yet — leave the button visible (so it's
+    // easy to find once a track is added) but inert.
+    btn.disabled = true;
+    return;
+  }
+
+  const savedVolRaw = parseFloat(localStorage.getItem('recruitMusicVolume'));
+  audio.volume = isNaN(savedVolRaw) ? 0.35 : Math.min(1, Math.max(0, savedVolRaw));
+
+  audio.addEventListener('error', ()=>{
+    btn.disabled = true;
+    btn.title = 'Music file not found — check the src path in the <audio id="bgMusic"> tag';
+  });
+
+  // Defaults to ON the first time (before the visitor has ever
+  // chosen), then remembers whatever they last picked.
+  const wantsMusic = localStorage.getItem('recruitMusicEnabled') !== 'false';
+
+  function primeAndPlay(){
+    if(musicPrimed) return;
+    musicPrimed = true;
+    if(wantsMusic && !btn.disabled){
+      audio.play().then(()=> setMusicBtnState(true)).catch(()=> setMusicBtnState(false));
+    }
+    document.removeEventListener('click', primeAndPlay);
+    document.removeEventListener('keydown', primeAndPlay);
+  }
+  document.addEventListener('click', primeAndPlay, { once:true });
+  document.addEventListener('keydown', primeAndPlay, { once:true });
+}
+function setMusicBtnState(playing){
+  const btn = document.getElementById('musicToggleBtn');
+  const icon = document.getElementById('musicToggleIcon');
+  if(!btn) return;
+  btn.setAttribute('aria-pressed', playing ? 'true' : 'false');
+  btn.title = playing ? 'Pause background music' : 'Play background music';
+  if(icon) icon.textContent = playing ? '🔊' : '🎵';
+}
+function toggleBgMusic(){
+  const audio = document.getElementById('bgMusic');
+  const btn = document.getElementById('musicToggleBtn');
+  if(!audio || btn.disabled) return;
+  musicPrimed = true; // clicking the button is itself the interaction
+  if(audio.paused){
+    audio.play().then(()=>{
+      localStorage.setItem('recruitMusicEnabled', 'true');
+      setMusicBtnState(true);
+    }).catch(()=>{
+      btn.disabled = true;
+      btn.title = 'Could not play — check the music file';
+    });
+  } else {
+    audio.pause();
+    localStorage.setItem('recruitMusicEnabled', 'false');
+    setMusicBtnState(false);
+  }
+}
+initBgMusic();
 
 /* ---------- Member login links → main site ---------- */
 ['memberLoginLink', 'memberLoginLinkMobile'].forEach(id => {
@@ -850,7 +966,7 @@ const formStatus = document.getElementById('formStatus');
 
 const SPECIALTIES = [
   'Photographer','Videographer','Graphic Designer','Video Editor',
-  'Writer','Social Media Manager','Any / Willing to Learn'
+  'Social Media Manager','Any / Willing to Learn'
 ];
 
 function setFieldError(fieldId, message){
@@ -862,7 +978,7 @@ function setFieldError(fieldId, message){
 }
 
 function clearAllErrors(){
-  ['full_name','student_id','cluster','email','password','confirm_password','preferred_specialty','agree'].forEach(f => setFieldError(f, ''));
+  ['full_name','grade_level','section','email','password','confirm_password','preferred_specialty','agree'].forEach(f => setFieldError(f, ''));
 }
 
 function validateForm(data){
@@ -870,7 +986,7 @@ function validateForm(data){
 
   if(!data.full_name){ setFieldError('full_name', 'Please enter your full name.'); valid = false; }
   if(!data.grade_level){ setFieldError('grade_level', 'Please select your grade level.'); valid = false; }
-  if(!data.section){ setFieldError('cluster', 'Please enter your cluster.'); valid = false; }
+  if(!data.section){ setFieldError('section', 'Please enter your section.'); valid = false; }
 
   if(!data.email){
     setFieldError('email', 'Please enter your email address.'); valid = false;
@@ -922,13 +1038,11 @@ form.addEventListener('submit', async (e) => {
 
   const data = {
     full_name: form.full_name.value.trim(),
-    student_id: form.student_id.value.trim(),
     grade_level: form.grade_level.value,
     section: form.section.value.trim(),
     email: form.email.value.trim(),
     password: form.password.value,
     confirm_password: form.confirm_password.value,
-    contact_number: form.contact_number.value.trim(),
     preferred_specialty: form.preferred_specialty.value,
     agree: form.agree.checked
   };
@@ -975,11 +1089,9 @@ form.addEventListener('submit', async (e) => {
       .from('applications')
       .insert([{
         full_name: data.full_name,
-        student_id: data.student_id,
         grade_level: data.grade_level,
         section: data.section,
         email: data.email,
-        contact_number: data.contact_number || null,
         preferred_specialty: data.preferred_specialty,
         status: 'Pending',
         user_id: signUpData?.user?.id || null
